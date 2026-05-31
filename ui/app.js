@@ -699,16 +699,25 @@ function openGoogleDocLink({ monitor = false } = {}) {
   }
 
   const docUrl = googleDocInput.value.trim();
-  window.open(docUrl, "_blank", "noopener,noreferrer");
+  const openedWindow = window.open(docUrl, "_blank", "noopener,noreferrer");
 
   if (monitor) {
     writeChromeBridgeRequest(docUrl);
-    setBridgeStatus(
-      "ok",
-      "已打开 Google Doc，并创建 Chrome 接管请求；插件连接后可检查 Editor 权限并执行法律版式整理。",
-    );
+    if (openedWindow) {
+      setBridgeStatus(
+        "ok",
+        "已打开 Google Doc，并创建 Chrome 接管请求；插件连接后可检查 Editor 权限并执行法律版式整理。",
+      );
+    } else {
+      setBridgeStatus("warn", "已创建 Chrome 接管请求，但浏览器拦截了新标签；请点“打开链接”。");
+    }
   } else {
-    setBridgeStatus("ok", "已在新标签打开 Google Doc。请确认右上角 Share 里当前账号是 Editor。");
+    setBridgeStatus(
+      openedWindow ? "ok" : "warn",
+      openedWindow
+        ? "已在新标签打开 Google Doc。请确认右上角 Share 里当前账号是 Editor。"
+        : "浏览器拦截了新标签；请允许弹窗，或手动打开这个 Google Doc。",
+    );
   }
 
   return true;
@@ -735,6 +744,23 @@ function writeChromeBridgeRequest(docUrl) {
   } catch {
     setBridgeStatus("warn", "Google Doc 已打开，但当前浏览器不允许保存 Chrome 接管请求。");
   }
+}
+
+function startGoogleDocHandoffForRun() {
+  const docUrl = googleDocInput.value.trim();
+  if (!docUrl) {
+    setBridgeStatus("warn", "未填写 Google Doc 链接。本次只生成本地任务状态，可点“本地 DOCX”下载 Word。");
+    return;
+  }
+
+  writeChromeBridgeRequest(docUrl);
+  const openedWindow = window.open(docUrl, "_blank", "noopener,noreferrer");
+  setBridgeStatus(
+    openedWindow ? "ok" : "warn",
+    openedWindow
+      ? "已打开 Google Doc，并创建 Chrome 接管请求；生成完成后插件/后端可继续写入和排版。"
+      : "已创建 Chrome 接管请求，但新标签被拦截；Google Doc 不会自动显示变化，请点“打开链接”。",
+  );
 }
 
 function summarizeBrief() {
@@ -1274,7 +1300,7 @@ function prepareNewConversation() {
   setProgress(6);
   updateTokenDisplay();
   setGoogleDocStatus("warn", "请输入法律文书需求；如需写入 Google Doc，请先粘贴可编辑链接。");
-  setBridgeStatus("warn", "可打开 Google Doc、创建 Chrome 接管请求，或直接生成本地 DOCX。");
+  setBridgeStatus("warn", "有 Google Doc 链接时，多 Agent 生成会创建接管请求；真实写入需要 Chrome 插件或后端服务。");
   briefInput.focus();
 }
 
@@ -1294,6 +1320,7 @@ function startLegalDraftRun() {
     return;
   }
 
+  startGoogleDocHandoffForRun();
   currentRunTokens = 0;
   writeCurrentRunTokens(currentRunTokens);
   updateTokenDisplay();
@@ -1331,11 +1358,19 @@ function startLegalDraftRun() {
     renderTimeline(timeline.length);
     setProgress(100);
     updateConversationTitle(summarizeBrief(), "Reviewer 审核完成");
+    const hasGoogleDoc = Boolean(googleDocInput.value.trim());
     setGoogleDocStatus(
       "ok",
-      "最终 Reviewer 已完成质量门。若 Google Doc 具备 Editor 权限，可继续自动调整法律文书版式。",
+      hasGoogleDoc
+        ? "最终 Reviewer 已完成质量门。Google Doc 接管请求已创建；需要 Chrome 插件或后端 OAuth 服务执行真实写入。"
+        : "最终 Reviewer 已完成质量门。未提供 Google Doc，可下载本地 DOCX 交付。",
     );
-    setBridgeStatus("ok", "可继续打开 Google Doc 接管编辑，或下载本地 DOCX 交付。");
+    setBridgeStatus(
+      hasGoogleDoc ? "warn" : "ok",
+      hasGoogleDoc
+        ? "如果 Google Doc 没有变化，说明 Chrome 接管插件或后端 Google Docs 服务尚未运行；可先点“本地 DOCX”。"
+        : "可下载本地 DOCX 交付。",
+    );
   }, 900);
 }
 

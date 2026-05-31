@@ -130,6 +130,11 @@ The UI console includes three delivery paths:
 - Create a Chrome handoff request for a Google Docs editor/formatter bridge.
 - Generate a local `.docx` draft in the browser when cloud editing is not ready.
 
+When a Google Doc edit link is present, the `Multi Agent` button also creates
+the Chrome handoff request immediately. The document will only be modified when
+a Chrome bridge/plugin or the Google Docs OAuth formatter service is running;
+the static UI cannot bypass Google sharing permissions by itself.
+
 ## Configuration
 
 Environment variables:
