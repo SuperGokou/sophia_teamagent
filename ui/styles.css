@@ -394,7 +394,7 @@ svg {
   grid-column: 2 / -1;
   min-height: 100vh;
   display: grid;
-  grid-template-rows: auto minmax(360px, 1fr) auto;
+  grid-template-rows: auto minmax(360px, 1fr);
   gap: 24px;
   padding: 48px 60px 36px;
   background: #f6f6f5;
@@ -486,8 +486,7 @@ svg {
   text-align: left;
 }
 
-.automation-active span,
-.automation-card-foot span {
+.automation-active span {
   color: var(--muted);
   font-size: 13px;
 }
@@ -501,80 +500,6 @@ svg {
   color: #70747a;
   font-size: 14px;
   line-height: 1.6;
-}
-
-.automation-suggestions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(240px, 1fr));
-  gap: 28px;
-}
-
-.automation-card {
-  min-height: 206px;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  gap: 18px;
-  padding: 24px 30px 20px;
-  border: 1px solid rgba(232, 232, 230, 0.8);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.88);
-}
-
-.automation-card-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.clock-icon {
-  width: 24px;
-  height: 24px;
-  display: grid;
-  place-items: center;
-  color: #1597ff;
-  font-size: 20px;
-  line-height: 1;
-}
-
-.automation-card-head strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 18px;
-}
-
-.automation-card p {
-  margin: 0;
-  display: -webkit-box;
-  overflow: hidden;
-  color: #7e8288;
-  font-size: 14px;
-  line-height: 1.65;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-}
-
-.automation-card-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-}
-
-.automation-card-foot button {
-  min-width: 74px;
-  height: 34px;
-  border: 0;
-  border-radius: 999px;
-  background: #eeeeed;
-  color: #1b1c1d;
-  font-size: 14px;
-  font-weight: 850;
-}
-
-.automation-card-foot button.is-added {
-  color: #0f7768;
-  background: rgba(65, 208, 184, 0.18);
 }
 
 .skills-page {
@@ -1759,10 +1684,6 @@ textarea:focus-visible {
     padding: 36px 30px 42px;
   }
 
-  .automation-suggestions {
-    grid-template-columns: repeat(2, minmax(220px, 1fr));
-  }
-
   .automation-active {
     grid-template-columns: minmax(260px, 1fr);
   }
@@ -1949,16 +1870,6 @@ textarea:focus-visible {
 
   .automation-empty p {
     font-size: 14px;
-  }
-
-  .automation-suggestions {
-    grid-template-columns: 1fr;
-    gap: 14px;
-  }
-
-  .automation-card {
-    min-height: 180px;
-    padding: 18px;
   }
 
   .skill-title-row {

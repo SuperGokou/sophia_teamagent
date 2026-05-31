@@ -174,7 +174,6 @@ const automationPage = document.querySelector("#automationPage");
 const automationEmpty = document.querySelector("#automationEmpty");
 const automationActive = document.querySelector("#automationActive");
 const automationCreateButtons = document.querySelectorAll("#automationCreateButton, #automationCreateAnother");
-const automationSuggestions = document.querySelector(".automation-suggestions");
 const skillsPage = document.querySelector("#skillsPage");
 const skillLibraryView = document.querySelector("#skillLibraryView");
 const mySkillsView = document.querySelector("#mySkillsView");
@@ -708,15 +707,6 @@ historyDelete.addEventListener("click", deleteConversation);
 automationButton.addEventListener("click", showAutomationPage);
 automationCreateButtons.forEach((button) => {
   button.addEventListener("click", createAutomationTask);
-});
-automationSuggestions.addEventListener("click", (event) => {
-  const addButton = event.target.closest(".automation-card-foot button");
-  if (!addButton) {
-    return;
-  }
-  addButton.textContent = "已添加";
-  addButton.classList.add("is-added");
-  createAutomationTask({ currentTarget: addButton });
 });
 skillMarketButton.addEventListener("click", showSkillsPage);
 officeButton.addEventListener("click", showOfficeView);
