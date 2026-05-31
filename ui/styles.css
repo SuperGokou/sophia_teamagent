@@ -451,8 +451,16 @@ svg {
 }
 
 .review .agent-sprite {
-  transform: translateX(-50%) scale(0.42);
-  opacity: 0.9;
+  top: 16px;
+  transform: translateX(-50%) scale(0.43);
+  opacity: 0.96;
+}
+
+.review .agent-glow {
+  top: 120px;
+  width: 74px;
+  height: 18px;
+  opacity: 0.42;
 }
 
 .office-scene.is-running .browser {
