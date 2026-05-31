@@ -300,23 +300,6 @@ svg {
   pointer-events: none;
 }
 
-.screen-name {
-  position: absolute;
-  z-index: 4;
-  top: 132px;
-  left: 50.8%;
-  color: #1d2024;
-  transform: translateX(-50%);
-  padding: 7px 12px;
-  border: 2px solid #5f3a2a;
-  border-radius: 4px;
-  background: rgba(255, 245, 205, 0.9);
-  box-shadow: 0 4px 0 rgba(95, 58, 42, 0.18);
-  font-size: 13px;
-  font-weight: 900;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
-}
-
 .route-layer {
   position: absolute;
   z-index: 2;
@@ -939,10 +922,6 @@ textarea:focus-visible {
     top: 86px;
     width: 900px;
     left: 50%;
-  }
-
-  .screen-name {
-    display: none;
   }
 
   .agent-node {
