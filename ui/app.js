@@ -180,6 +180,27 @@ let activeIndex = 0;
 let runTimer;
 let conversationDeleted = false;
 let activeSkillFilter = "all";
+const conversationDeletedKey = "sophia.conversation.deleted";
+
+function readConversationDeleted() {
+  try {
+    return window.localStorage.getItem(conversationDeletedKey) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function writeConversationDeleted(isDeleted) {
+  try {
+    if (isDeleted) {
+      window.localStorage.setItem(conversationDeletedKey, "true");
+      return;
+    }
+    window.localStorage.removeItem(conversationDeletedKey);
+  } catch {
+    // Ignore storage failures in private or restricted browser modes.
+  }
+}
 
 function activeAgent() {
   return agents[activeIndex] || agents[0];
@@ -333,11 +354,22 @@ function setConversationOpen(isOpen) {
   historyItem.classList.toggle("is-open", isOpen);
 }
 
+function setConversationDeleted(isDeleted) {
+  conversationDeleted = isDeleted;
+  conversationEntry.hidden = isDeleted;
+  historyItem.hidden = isDeleted;
+  totalCount.textContent = isDeleted ? "0" : "1";
+
+  if (isDeleted) {
+    runningCount.textContent = "0";
+    doneCount.textContent = "0";
+    setConversationOpen(false);
+  }
+}
+
 function restoreConversation() {
-  conversationDeleted = false;
-  conversationEntry.hidden = false;
-  historyItem.hidden = false;
-  totalCount.textContent = "1";
+  writeConversationDeleted(false);
+  setConversationDeleted(false);
 }
 
 function openConversation() {
@@ -358,16 +390,12 @@ function openConversation() {
 }
 
 function deleteConversation(event) {
+  event.preventDefault();
   event.stopPropagation();
   window.clearInterval(runTimer);
-  conversationDeleted = true;
-  conversationEntry.hidden = true;
-  historyItem.hidden = true;
+  writeConversationDeleted(true);
+  setConversationDeleted(true);
   officeStage.classList.remove("is-running");
-  runningCount.textContent = "0";
-  doneCount.textContent = "0";
-  totalCount.textContent = "0";
-  setConversationOpen(false);
   activate("planner");
   setProgress(18);
 }
@@ -505,4 +533,5 @@ document.addEventListener("keydown", (event) => {
 
 activate("planner");
 setProgress(18);
+setConversationDeleted(readConversationDeleted());
 renderSkills();
