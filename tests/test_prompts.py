@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from legal_doc_agent.agents import DRAFTER_ROLE, PLANNER_ROLE
+from legal_doc_agent.agents import ANALYST_ROLE, DRAFTER_ROLE, PLANNER_ROLE
 from legal_doc_agent.prompts import (
     REQUIRED_TEMPLATE_DOCUMENTS,
     build_generation_jobs,
@@ -17,6 +17,7 @@ class PromptTests(unittest.TestCase):
         self.assertEqual(len(jobs), 3 + len(REQUIRED_TEMPLATE_DOCUMENTS))
         self.assertEqual(jobs[0].title, "PART A - Required Document Checklist")
         self.assertEqual(jobs[0].agent_role, PLANNER_ROLE)
+        self.assertEqual(jobs[1].agent_role, ANALYST_ROLE)
         self.assertIn("Generate only PART A", jobs[0].prompt)
         self.assertIn("Corporate Bylaws", jobs[3].title)
         self.assertEqual(jobs[3].agent_role, DRAFTER_ROLE)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from legal_doc_agent.agents import DRAFTER_ROLE, PLANNER_ROLE
+from legal_doc_agent.agents import ANALYST_ROLE, DRAFTER_ROLE, PLANNER_ROLE
 
 
 SYSTEM_PROMPT = """You are a careful legal-document drafting assistant.
@@ -66,7 +66,7 @@ Do not generate PART B, C, or D in this response.
         GenerationJob(
             job_id="part_b_optional_recommended_checklist",
             title="PART B - Optional / Recommended Document Checklist",
-            agent_role=PLANNER_ROLE,
+            agent_role=ANALYST_ROLE,
             prompt=f"""{base_context}
 
 Generate only PART B from the source specification.

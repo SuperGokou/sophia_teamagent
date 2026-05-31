@@ -756,28 +756,33 @@ button:focus-visible {
   }
 
   .agent-node {
-    width: 108px;
-    height: 122px;
+    width: 96px;
+    height: 112px;
   }
 
   .agent-node.planner {
-    --x: 56% !important;
-    --y: 36% !important;
+    --x: 58% !important;
+    --y: 33% !important;
   }
 
   .agent-node.reviewer {
-    --x: 72% !important;
-    --y: 46% !important;
+    --x: 78% !important;
+    --y: 47% !important;
   }
 
   .agent-node.coder {
-    --x: 40% !important;
-    --y: 62% !important;
+    --x: 34% !important;
+    --y: 69% !important;
+  }
+
+  .agent-node.analyst {
+    --x: 49% !important;
+    --y: 51% !important;
   }
 
   .agent-node.drafter {
-    --x: 62% !important;
-    --y: 64% !important;
+    --x: 69% !important;
+    --y: 76% !important;
   }
 
   .agent-label {
@@ -786,7 +791,7 @@ button:focus-visible {
   }
 
   .agent-sprite {
-    transform: translateX(-50%) scale(0.58);
+    transform: translateX(-50%) scale(0.5);
   }
 
   .route-line {

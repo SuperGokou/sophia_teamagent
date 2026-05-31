@@ -71,6 +71,7 @@ Default role routing:
 
 - `planner`: `openai/gpt-oss-120b`, for checklists, structure, and package planning.
 - `drafter`: `deepseek-ai/deepseek-v4-pro`, for long legal templates and clause-heavy drafting.
+- `analyst`: `minimaxai/minimax-m2.7`, for optional-document analysis, risk tradeoffs, and benchmark-style synthesis.
 - `coder`: `qwen/qwen3-coder-480b-a35b-instruct`, reserved for future code/schema/automation tasks.
 - `reviewer`: `google/gemma-3n-e2b-it`, reserved for short sanity checks and lightweight review.
 
@@ -79,6 +80,7 @@ Override any role with environment variables like:
 ```powershell
 $env:NVIDIA_PLANNER_MODEL = "openai/gpt-oss-120b"
 $env:NVIDIA_DRAFTER_MODEL = "deepseek-ai/deepseek-v4-pro"
+$env:NVIDIA_ANALYST_MODEL = "minimaxai/minimax-m2.7"
 $env:NVIDIA_DRAFTER_THINKING = "false"
 ```
 

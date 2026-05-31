@@ -11,6 +11,7 @@ from legal_doc_agent.nvidia import NvidiaClient
 
 PLANNER_ROLE = "planner"
 DRAFTER_ROLE = "drafter"
+ANALYST_ROLE = "analyst"
 CODER_ROLE = "coder"
 REVIEWER_ROLE = "reviewer"
 
@@ -46,6 +47,15 @@ DEFAULT_AGENT_PROFILES: dict[str, AgentProfile] = {
         max_tokens=16384,
         thinking=False,
         purpose="Draft long-form legal templates that need deeper clause coverage.",
+    ),
+    ANALYST_ROLE: AgentProfile(
+        role=ANALYST_ROLE,
+        model="minimaxai/minimax-m2.7",
+        temperature=1.0,
+        top_p=0.95,
+        max_tokens=8192,
+        thinking=None,
+        purpose="Analyze optional documents, risk tradeoffs, and negotiation benchmarks.",
     ),
     CODER_ROLE: AgentProfile(
         role=CODER_ROLE,

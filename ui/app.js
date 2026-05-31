@@ -21,6 +21,13 @@ const agents = [
     detail: "保留给 schema、脚本、集成和批处理。",
   },
   {
+    id: "analyst",
+    name: "Analyst",
+    model: "minimaxai/minimax-m2.7",
+    role: "风险分析",
+    detail: "比较可选文件、合同风险、谈判取舍和市场标准。",
+  },
+  {
     id: "reviewer",
     name: "Reviewer",
     model: "google/gemma-3n-e2b-it",
@@ -104,7 +111,7 @@ runButton.addEventListener("click", () => {
   runStatus.textContent = "运行中";
   let progress = 18;
   let step = 1;
-  const sequence = ["planner", "planner", "drafter", "drafter", "reviewer"];
+  const sequence = ["planner", "analyst", "drafter", "coder", "reviewer"];
   const interval = window.setInterval(() => {
     progress += 14;
     step += 1;
