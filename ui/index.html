@@ -66,7 +66,7 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 17.5A7.6 7.6 0 0 1 5 12a7 7 0 0 1 7-7 7.6 7.6 0 0 1 5.5 3M16 6.5A7.6 7.6 0 0 1 19 12a7 7 0 0 1-7 7 7.6 7.6 0 0 1-5.5-3" /></svg>
             办公室
           </button>
-          <button class="history-item" type="button">
+          <button class="history-item" type="button" id="historyItem">
             <strong>公司设立文件包，为...</strong>
             <small>多 Agent 协作草拟中</small>
           </button>
@@ -170,21 +170,32 @@
               <span>已完成</span>
             </div>
             <div>
-              <strong>1</strong>
+              <strong id="totalCount">1</strong>
               <span>总计</span>
             </div>
           </div>
 
-          <button class="conversation-row" type="button">
-            <div>
-              <strong>公司设立文件包，为什么会...</strong>
-              <span>累计Token消耗33599</span>
+          <div class="conversation-entry" id="conversationEntry">
+            <button class="conversation-row" type="button" id="conversationRow" aria-expanded="false" aria-controls="conversationOpenCard">
+              <div>
+                <strong>公司设立文件包，为什么会...</strong>
+                <span>累计Token消耗33599</span>
+              </div>
+              <div>
+                <em id="runStatus">已完成</em>
+                <span>02:52 05/31</span>
+              </div>
+            </button>
+            <button class="conversation-delete" type="button" id="conversationDelete" aria-label="删除对话" title="删除对话">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 6h18M8 6V4h8v2m-9 0 1 15h8l1-15M10 10v7m4-7v7" />
+              </svg>
+            </button>
+            <div class="conversation-open-card" id="conversationOpenCard" hidden>
+              <strong>已打开文件包</strong>
+              <span>Reviewer · Word export · 100%</span>
             </div>
-            <div>
-              <em id="runStatus">已完成</em>
-              <span>02:52 05/31</span>
-            </div>
-          </button>
+          </div>
 
           <p class="end-text">没有更多了</p>
         </section>

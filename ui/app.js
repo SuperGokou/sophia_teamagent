@@ -43,6 +43,7 @@ const exportButton = document.querySelector("#exportButton");
 const runStatus = document.querySelector("#runStatus");
 const runningCount = document.querySelector("#runningCount");
 const doneCount = document.querySelector("#doneCount");
+const totalCount = document.querySelector("#totalCount");
 const tokenUsed = document.querySelector("#tokenUsed");
 const tokenSaved = document.querySelector("#tokenSaved");
 const progressValue = document.querySelector("#progressValue");
@@ -50,9 +51,15 @@ const progressBar = document.querySelector("#progressBar");
 const briefInput = document.querySelector("#briefInput");
 const loginButton = document.querySelector("#loginButton");
 const loginPanel = document.querySelector("#loginPanel");
+const conversationEntry = document.querySelector("#conversationEntry");
+const conversationRow = document.querySelector("#conversationRow");
+const conversationDelete = document.querySelector("#conversationDelete");
+const conversationOpenCard = document.querySelector("#conversationOpenCard");
+const historyItem = document.querySelector("#historyItem");
 
 let activeIndex = 0;
 let runTimer;
+let conversationDeleted = false;
 
 function activeAgent() {
   return agents[activeIndex] || agents[0];
@@ -109,6 +116,52 @@ function activate(agentId) {
   renderTimeline(Math.min(activeIndex + 1, timeline.length - 1));
 }
 
+function setConversationOpen(isOpen) {
+  conversationRow.classList.toggle("is-open", isOpen);
+  conversationRow.setAttribute("aria-expanded", String(isOpen));
+  conversationOpenCard.hidden = !isOpen;
+  historyItem.classList.toggle("is-open", isOpen);
+}
+
+function restoreConversation() {
+  conversationDeleted = false;
+  conversationEntry.hidden = false;
+  historyItem.hidden = false;
+  totalCount.textContent = "1";
+}
+
+function openConversation() {
+  if (conversationDeleted) {
+    return;
+  }
+
+  window.clearInterval(runTimer);
+  officeStage.classList.remove("is-running");
+  runningCount.textContent = "0";
+  doneCount.textContent = "1";
+  totalCount.textContent = "1";
+  runStatus.textContent = "已打开";
+  activate("reviewer");
+  renderTimeline(timeline.length);
+  setProgress(100);
+  setConversationOpen(true);
+}
+
+function deleteConversation(event) {
+  event.stopPropagation();
+  window.clearInterval(runTimer);
+  conversationDeleted = true;
+  conversationEntry.hidden = true;
+  historyItem.hidden = true;
+  officeStage.classList.remove("is-running");
+  runningCount.textContent = "0";
+  doneCount.textContent = "0";
+  totalCount.textContent = "0";
+  setConversationOpen(false);
+  activate("planner");
+  setProgress(18);
+}
+
 document.querySelectorAll(".agent-node").forEach((node) => {
   node.addEventListener("click", () => {
     window.clearInterval(runTimer);
@@ -122,6 +175,8 @@ document.querySelectorAll(".agent-node").forEach((node) => {
 
 runButton.addEventListener("click", () => {
   window.clearInterval(runTimer);
+  restoreConversation();
+  setConversationOpen(false);
   officeStage.classList.add("is-running");
   runStatus.textContent = "进行中";
   runningCount.textContent = "1";
@@ -149,6 +204,7 @@ runButton.addEventListener("click", () => {
     runStatus.textContent = "已完成";
     runningCount.textContent = "0";
     doneCount.textContent = "1";
+    totalCount.textContent = "1";
     activeIndex = agents.length - 1;
     renderAgents();
     renderTimeline(timeline.length);
@@ -172,6 +228,10 @@ exportButton.addEventListener("click", () => {
   link.click();
   URL.revokeObjectURL(link.href);
 });
+
+conversationRow.addEventListener("click", openConversation);
+historyItem.addEventListener("click", openConversation);
+conversationDelete.addEventListener("click", deleteConversation);
 
 loginButton.addEventListener("click", () => {
   const isOpen = loginPanel.classList.toggle("is-open");
