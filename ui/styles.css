@@ -536,6 +536,9 @@ svg {
 
 .metrics article {
   min-width: 0;
+  display: grid;
+  grid-template-rows: 16px 64px auto;
+  align-content: start;
 }
 
 .metrics span,
@@ -551,9 +554,11 @@ svg {
   display: flex;
   align-items: baseline;
   gap: 3px;
-  margin-top: 17px;
-  padding-bottom: 28px;
+  height: 64px;
+  margin-top: 0;
+  padding-bottom: 0;
   border-bottom: 4px solid #ead8b5;
+  white-space: nowrap;
 }
 
 .metrics b {
@@ -565,11 +570,12 @@ svg {
   color: #b9bbbf;
   font-size: 23px;
   font-style: normal;
+  line-height: 1;
 }
 
 .metrics small {
   display: block;
-  margin-top: 14px;
+  margin-top: 10px;
   color: var(--muted);
   font-size: 13px;
 }
