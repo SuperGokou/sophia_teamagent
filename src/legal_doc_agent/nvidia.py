@@ -1,4 +1,4 @@
-"""DeepSeek OpenAI-compatible chat completion client."""
+"""NVIDIA OpenAI-compatible chat completion client."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from legal_doc_agent.config import DeepSeekConfig
+from legal_doc_agent.config import NvidiaConfig
 
 
 class ProviderError(RuntimeError):
@@ -20,10 +20,10 @@ Message = dict[str, str]
 
 
 @dataclass
-class DeepSeekClient:
-    """Minimal stdlib client for DeepSeek chat completions."""
+class NvidiaClient:
+    """Minimal stdlib client for NVIDIA chat completions."""
 
-    config: DeepSeekConfig
+    config: NvidiaConfig
 
     def complete(self, messages: Sequence[Message]) -> str:
         """Return assistant text for the provided chat messages."""
@@ -33,7 +33,10 @@ class DeepSeekClient:
             "model": self.config.model,
             "messages": list(messages),
             "temperature": self.config.temperature,
+            "top_p": self.config.top_p,
             "max_tokens": self.config.max_tokens,
+            "chat_template_kwargs": {"thinking": self.config.thinking},
+            "stream": False,
         }
         request = urllib.request.Request(
             f"{self.config.base_url}/chat/completions",
@@ -55,17 +58,17 @@ class DeepSeekClient:
         except urllib.error.HTTPError as exc:
             details = exc.read().decode("utf-8", errors="replace")[:2000]
             raise ProviderError(
-                f"DeepSeek API returned HTTP {exc.code}: {details}"
+                f"NVIDIA API returned HTTP {exc.code}: {details}"
             ) from exc
         except urllib.error.URLError as exc:
-            raise ProviderError(f"DeepSeek API request failed: {exc.reason}") from exc
+            raise ProviderError(f"NVIDIA API request failed: {exc.reason}") from exc
 
         try:
             data: dict[str, Any] = json.loads(body)
             content = data["choices"][0]["message"]["content"]
         except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
-            raise ProviderError(f"Unexpected DeepSeek response shape: {body[:2000]}") from exc
+            raise ProviderError(f"Unexpected NVIDIA response shape: {body[:2000]}") from exc
 
         if not isinstance(content, str) or not content.strip():
-            raise ProviderError("DeepSeek returned an empty assistant message.")
+            raise ProviderError("NVIDIA returned an empty assistant message.")
         return content.strip()

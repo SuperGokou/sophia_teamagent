@@ -1,7 +1,7 @@
 [project]
 name = "legal-doc-agent"
 version = "0.1.0"
-description = "DeepSeek-powered agent harness for generating Word legal-document packages."
+description = "NVIDIA API-powered agent harness for generating Word legal-document packages."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

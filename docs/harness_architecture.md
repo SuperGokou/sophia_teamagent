@@ -6,7 +6,7 @@ Generate a polished `.docx` package from:
 
 1. A reusable drafting specification.
 2. A user-provided company brief.
-3. DeepSeek's OpenAI-compatible chat completion API.
+3. NVIDIA's OpenAI-compatible chat completion API.
 
 ## Agent Shape
 
@@ -21,7 +21,7 @@ The runtime keeps tools narrow and explicit:
 
 - `load_spec`: read the long legal drafting specification.
 - `build_generation_jobs`: turn the full request into bounded generation jobs.
-- `complete`: call DeepSeek for one bounded job.
+- `complete`: call NVIDIA for one bounded job.
 - `write_docx`: convert completed sections into a Word document.
 - `write_artifacts`: save markdown outputs for audit and re-runs.
 
@@ -40,7 +40,7 @@ Each step returns a deterministic observation:
 
 ## Recovery
 
-- Missing API key: stop before network calls and explain `DEEPSEEK_API_KEY`.
+- Missing API key: stop before network calls and explain `NVIDIA_API_KEY`.
 - Provider HTTP error: include status code and response body preview.
 - Empty model output: stop that job and report which section failed.
 - DOCX write error: preserve generated markdown artifacts for manual recovery.

@@ -1,6 +1,6 @@
 # Legal Doc Agent
 
-A small Python harness for generating Word document packages from a user brief and a reusable drafting specification, using the DeepSeek OpenAI-compatible API.
+A small Python harness for generating Word document packages from a user brief and a reusable drafting specification, using NVIDIA's OpenAI-compatible API.
 
 The included default prompt is tuned for a Delaware C-Corp post-formation legal documentation package for an AI/SaaS startup. Generated output is drafting assistance only and should be reviewed by qualified counsel before use.
 
@@ -8,10 +8,12 @@ The included default prompt is tuned for a Delaware C-Corp post-formation legal 
 
 ```powershell
 python -m pip install -e .
-$env:DEEPSEEK_API_KEY = "your_deepseek_api_key"
+$env:NVIDIA_API_KEY = "your_nvidia_api_key"
 ```
 
-DeepSeek's official docs list the OpenAI-compatible base URL as `https://api.deepseek.com`. The default model here is `deepseek-v4-pro`; override it with `DEEPSEEK_MODEL` or `--model`.
+The default NVIDIA OpenAI-compatible base URL is `https://integrate.api.nvidia.com/v1`. The default model is `deepseek-ai/deepseek-v4-pro`; override it with `NVIDIA_MODEL` or `--model`.
+
+Do not hardcode API keys in source files. Put them in your environment or a local `.env` file that remains ignored by git.
 
 ## Generate a Word Document
 
@@ -27,7 +29,7 @@ You can also pass short input directly:
 python -m legal_doc_agent --brief-text "Company name: Example AI, Inc.; founders: Alice and Bob; 50/50 ownership." --out outputs/example.docx
 ```
 
-For an offline smoke test without calling DeepSeek:
+For an offline smoke test without calling NVIDIA:
 
 ```powershell
 python -m legal_doc_agent --dry-run --brief-file input/company_brief.md --out outputs/dry_run.docx
@@ -37,10 +39,14 @@ python -m legal_doc_agent --dry-run --brief-file input/company_brief.md --out ou
 
 Environment variables:
 
-- `DEEPSEEK_API_KEY`: required for real generation.
-- `DEEPSEEK_BASE_URL`: defaults to `https://api.deepseek.com`.
-- `DEEPSEEK_MODEL`: defaults to `deepseek-v4-pro`.
-- `DEEPSEEK_TIMEOUT`: defaults to `120`.
+- `NVIDIA_API_KEY`: required for real generation.
+- `NVIDIA_BASE_URL`: defaults to `https://integrate.api.nvidia.com/v1`.
+- `NVIDIA_MODEL`: defaults to `deepseek-ai/deepseek-v4-pro`.
+- `NVIDIA_TEMPERATURE`: defaults to `1`.
+- `NVIDIA_TOP_P`: defaults to `0.95`.
+- `NVIDIA_MAX_TOKENS`: defaults to `16384`.
+- `NVIDIA_THINKING`: defaults to `false`.
+- `NVIDIA_TIMEOUT`: defaults to `120`.
 
 CLI options override environment values.
 

@@ -127,6 +127,6 @@ class DryRunClient:
             "This is dry-run placeholder content. It confirms that the harness, "
             "artifact writer, and DOCX renderer path are wired correctly.\n\n"
             "## Review Notice\n\n"
-            "- Replace dry-run output with a real DeepSeek generation before use.\n"
+            "- Replace dry-run output with a real NVIDIA generation before use.\n"
             "- Have qualified counsel review all legal drafts.\n"
         )

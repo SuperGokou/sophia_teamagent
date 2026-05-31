@@ -6,8 +6,8 @@ import argparse
 import sys
 from pathlib import Path
 
-from legal_doc_agent.config import ConfigurationError, DeepSeekConfig
-from legal_doc_agent.deepseek import DeepSeekClient, ProviderError
+from legal_doc_agent.config import ConfigurationError, NvidiaConfig
+from legal_doc_agent.nvidia import NvidiaClient, ProviderError
 from legal_doc_agent.harness import DryRunClient, LegalDocumentAgent
 
 
@@ -20,12 +20,14 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         brief = _load_brief(args)
-        client = DryRunClient() if args.dry_run else DeepSeekClient(
-            DeepSeekConfig.from_env(
+        client = DryRunClient() if args.dry_run else NvidiaClient(
+            NvidiaConfig.from_env(
                 base_url=args.base_url,
                 model=args.model,
                 temperature=args.temperature,
+                top_p=args.top_p,
                 max_tokens=args.max_tokens,
+                thinking=args.thinking,
             )
         )
         agent = LegalDocumentAgent(client)
@@ -46,7 +48,7 @@ def main(argv: list[str] | None = None) -> int:
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Generate a Word legal-document package with DeepSeek.",
+        description="Generate a Word legal-document package with NVIDIA.",
     )
     brief_group = parser.add_mutually_exclusive_group(required=False)
     brief_group.add_argument("--brief-file", type=Path, help="Path to a company brief.")
@@ -54,14 +56,21 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--spec", type=Path, default=DEFAULT_SPEC_PATH)
     parser.add_argument("--out", type=Path, default=Path("outputs/post_formation_package.docx"))
     parser.add_argument("--artifact-dir", type=Path, default=Path("outputs/artifacts"))
-    parser.add_argument("--base-url", help="DeepSeek-compatible base URL.")
-    parser.add_argument("--model", help="DeepSeek model name.")
+    parser.add_argument("--base-url", help="NVIDIA-compatible base URL.")
+    parser.add_argument("--model", help="NVIDIA model name.")
     parser.add_argument("--temperature", type=float, help="Sampling temperature.")
+    parser.add_argument("--top-p", type=float, help="Nucleus sampling top_p.")
     parser.add_argument("--max-tokens", type=int, help="Max output tokens per section.")
+    parser.add_argument(
+        "--thinking",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Enable or disable NVIDIA chat_template_kwargs.thinking.",
+    )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Create a placeholder DOCX without calling DeepSeek.",
+        help="Create a placeholder DOCX without calling NVIDIA.",
     )
     return parser
 

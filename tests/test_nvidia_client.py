@@ -4,13 +4,13 @@ import json
 import unittest
 from unittest.mock import Mock, patch
 
-from legal_doc_agent.config import ConfigurationError, DeepSeekConfig
-from legal_doc_agent.deepseek import DeepSeekClient
+from legal_doc_agent.config import ConfigurationError, NvidiaConfig
+from legal_doc_agent.nvidia import NvidiaClient
 
 
-class DeepSeekClientTests(unittest.TestCase):
+class NvidiaClientTests(unittest.TestCase):
     def test_requires_api_key(self) -> None:
-        client = DeepSeekClient(DeepSeekConfig(api_key=None))
+        client = NvidiaClient(NvidiaConfig(api_key=None))
 
         with self.assertRaises(ConfigurationError):
             client.complete([{"role": "user", "content": "hello"}])
@@ -24,17 +24,29 @@ class DeepSeekClientTests(unittest.TestCase):
         response.__enter__ = Mock(return_value=response)
         response.__exit__ = Mock(return_value=False)
         urlopen.return_value = response
-        config = DeepSeekConfig(api_key="key", model="deepseek-v4-pro", max_tokens=100)
-        client = DeepSeekClient(config)
+        config = NvidiaConfig(
+            api_key="key",
+            model="deepseek-ai/deepseek-v4-pro",
+            max_tokens=16384,
+        )
+        client = NvidiaClient(config)
 
         content = client.complete([{"role": "user", "content": "hello"}])
 
         self.assertEqual(content, "draft")
         request = urlopen.call_args.args[0]
-        self.assertEqual(request.full_url, "https://api.deepseek.com/chat/completions")
+        self.assertEqual(
+            request.full_url,
+            "https://integrate.api.nvidia.com/v1/chat/completions",
+        )
         payload = json.loads(request.data.decode("utf-8"))
-        self.assertEqual(payload["model"], "deepseek-v4-pro")
+        self.assertEqual(payload["model"], "deepseek-ai/deepseek-v4-pro")
         self.assertEqual(payload["messages"][0]["content"], "hello")
+        self.assertEqual(payload["temperature"], 1.0)
+        self.assertEqual(payload["top_p"], 0.95)
+        self.assertEqual(payload["max_tokens"], 16384)
+        self.assertEqual(payload["chat_template_kwargs"], {"thinking": False})
+        self.assertFalse(payload["stream"])
 
 
 if __name__ == "__main__":
