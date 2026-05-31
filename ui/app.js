@@ -141,6 +141,7 @@ const officeView = document.querySelector(".office");
 const inspectorView = document.querySelector(".inspector");
 const officeStage = document.querySelector("#officeStage");
 const runButton = document.querySelector("#runButton");
+const automationButton = document.querySelector("#automationButton");
 const skillMarketButton = document.querySelector("#skillMarketButton");
 const officeButton = document.querySelector("#officeButton");
 const exportButton = document.querySelector("#exportButton");
@@ -160,6 +161,11 @@ const conversationRow = document.querySelector("#conversationRow");
 const conversationDelete = document.querySelector("#conversationDelete");
 const conversationOpenCard = document.querySelector("#conversationOpenCard");
 const historyItem = document.querySelector("#historyItem");
+const automationPage = document.querySelector("#automationPage");
+const automationEmpty = document.querySelector("#automationEmpty");
+const automationActive = document.querySelector("#automationActive");
+const automationCreateButtons = document.querySelectorAll("#automationCreateButton, #automationCreateAnother");
+const automationSuggestions = document.querySelector(".automation-suggestions");
 const skillsPage = document.querySelector("#skillsPage");
 const skillLibraryView = document.querySelector("#skillLibraryView");
 const mySkillsView = document.querySelector("#mySkillsView");
@@ -223,7 +229,9 @@ function showOfficeView() {
   appShell.classList.remove("is-skills-mode");
   officeView.hidden = false;
   inspectorView.hidden = false;
+  automationPage.hidden = true;
   skillsPage.hidden = true;
+  automationButton.classList.remove("is-active");
   skillMarketButton.classList.remove("is-active");
   officeButton.classList.add("is-active");
 }
@@ -245,10 +253,32 @@ function showSkillsPage() {
   appShell.classList.add("is-skills-mode");
   officeView.hidden = true;
   inspectorView.hidden = true;
+  automationPage.hidden = true;
   skillsPage.hidden = false;
   officeButton.classList.remove("is-active");
+  automationButton.classList.remove("is-active");
   skillMarketButton.classList.add("is-active");
   showSkillLibrary();
+}
+
+function showAutomationPage() {
+  window.clearInterval(runTimer);
+  officeStage.classList.remove("is-running");
+  appShell.classList.add("is-skills-mode");
+  officeView.hidden = true;
+  inspectorView.hidden = true;
+  skillsPage.hidden = true;
+  automationPage.hidden = false;
+  officeButton.classList.remove("is-active");
+  skillMarketButton.classList.remove("is-active");
+  automationButton.classList.add("is-active");
+}
+
+function createAutomationTask(event) {
+  const sourceButton = event.currentTarget;
+  automationEmpty.hidden = true;
+  automationActive.hidden = false;
+  sourceButton.blur();
 }
 
 function renderAgents() {
@@ -413,6 +443,19 @@ exportButton.addEventListener("click", () => {
 conversationRow.addEventListener("click", openConversation);
 historyItem.addEventListener("click", openConversation);
 conversationDelete.addEventListener("click", deleteConversation);
+automationButton.addEventListener("click", showAutomationPage);
+automationCreateButtons.forEach((button) => {
+  button.addEventListener("click", createAutomationTask);
+});
+automationSuggestions.addEventListener("click", (event) => {
+  const addButton = event.target.closest(".automation-card-foot button");
+  if (!addButton) {
+    return;
+  }
+  addButton.textContent = "已添加";
+  addButton.classList.add("is-added");
+  createAutomationTask({ currentTarget: addButton });
+});
 skillMarketButton.addEventListener("click", showSkillsPage);
 officeButton.addEventListener("click", showOfficeView);
 mySkillsButton.addEventListener("click", showMySkillsView);

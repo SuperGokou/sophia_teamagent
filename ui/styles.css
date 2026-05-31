@@ -344,6 +344,193 @@ svg {
   font-weight: 900;
 }
 
+.automation-page {
+  grid-column: 2 / -1;
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto minmax(360px, 1fr) auto;
+  gap: 24px;
+  padding: 48px 60px 36px;
+  background: #f6f6f5;
+  overflow: auto;
+}
+
+.automation-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+}
+
+.automation-header h1 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.automation-empty,
+.automation-active {
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+
+.automation-empty-copy {
+  display: grid;
+  justify-items: center;
+  gap: 20px;
+  max-width: 760px;
+}
+
+.automation-empty h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.15;
+  font-weight: 900;
+}
+
+.automation-empty p {
+  margin: 0;
+  color: #999b9f;
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.automation-create {
+  height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  background: #060606;
+  font-size: 15px;
+  font-weight: 900;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.automation-create svg {
+  width: 18px;
+  height: 18px;
+}
+
+.automation-create:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.14);
+}
+
+.automation-active {
+  grid-template-columns: minmax(280px, 520px) auto;
+  justify-content: center;
+  gap: 18px;
+}
+
+.automation-active article {
+  display: grid;
+  gap: 8px;
+  padding: 22px 24px;
+  border: 1px solid #e8e8e6;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.88);
+  text-align: left;
+}
+
+.automation-active span,
+.automation-card-foot span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.automation-active strong {
+  font-size: 18px;
+}
+
+.automation-active p {
+  margin: 0;
+  color: #70747a;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.automation-suggestions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(240px, 1fr));
+  gap: 28px;
+}
+
+.automation-card {
+  min-height: 206px;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 18px;
+  padding: 24px 30px 20px;
+  border: 1px solid rgba(232, 232, 230, 0.8);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.automation-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.clock-icon {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  color: #1597ff;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.automation-card-head strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 18px;
+}
+
+.automation-card p {
+  margin: 0;
+  display: -webkit-box;
+  overflow: hidden;
+  color: #7e8288;
+  font-size: 14px;
+  line-height: 1.65;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.automation-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.automation-card-foot button {
+  min-width: 74px;
+  height: 34px;
+  border: 0;
+  border-radius: 999px;
+  background: #eeeeed;
+  color: #1b1c1d;
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.automation-card-foot button.is-added {
+  color: #0f7768;
+  background: rgba(65, 208, 184, 0.18);
+}
+
 .skills-page {
   grid-column: 2 / -1;
   min-height: 100vh;
@@ -1269,6 +1456,10 @@ textarea:focus-visible {
     padding-inline: 44px;
   }
 
+  .automation-page {
+    padding-inline: 44px;
+  }
+
   .skill-grid {
     gap: 24px;
   }
@@ -1285,6 +1476,18 @@ textarea:focus-visible {
 
   .skills-page {
     padding: 36px 30px 48px;
+  }
+
+  .automation-page {
+    padding: 36px 30px 42px;
+  }
+
+  .automation-suggestions {
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+  }
+
+  .automation-active {
+    grid-template-columns: minmax(260px, 1fr);
   }
 
   .skills-header {
@@ -1424,6 +1627,37 @@ textarea:focus-visible {
 
   .skills-page {
     padding: 28px 16px 44px;
+  }
+
+  .automation-page {
+    grid-template-rows: auto auto auto;
+    padding: 28px 16px 44px;
+  }
+
+  .automation-header {
+    align-items: flex-start;
+  }
+
+  .automation-empty {
+    min-height: 320px;
+  }
+
+  .automation-empty h2 {
+    font-size: 20px;
+  }
+
+  .automation-empty p {
+    font-size: 14px;
+  }
+
+  .automation-suggestions {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .automation-card {
+    min-height: 180px;
+    padding: 18px;
   }
 
   .skill-title-row {

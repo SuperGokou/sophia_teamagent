@@ -30,7 +30,7 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
             新建对话
           </button>
-          <button class="nav-item" type="button">
+          <button class="nav-item" type="button" id="automationButton">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7v5l3.5 2M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z" /></svg>
             自动任务
           </button>
@@ -225,6 +225,79 @@ Ownership: 50/50
 Business: AI agents, staffing automation, SaaS workflow products
 Special notes:</textarea>
       </aside>
+
+      <main class="automation-page" id="automationPage" hidden>
+        <header class="automation-header">
+          <h1>自动任务</h1>
+          <div class="window-tools" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 7h18s-3 0-3-7M10 21h4" /></svg>
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </header>
+
+        <section class="automation-empty" id="automationEmpty">
+          <div class="automation-empty-copy">
+            <h2>开启你的第一个自动任务吧</h2>
+            <p>Tips：请保持电脑开机并运行客户端，否则在关机、休眠或退出客户端时，自动任务无法执行</p>
+            <button class="automation-create" type="button" id="automationCreateButton">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+              新建自动任务
+            </button>
+          </div>
+        </section>
+
+        <section class="automation-active" id="automationActive" hidden>
+          <article>
+            <span>已启用</span>
+            <strong>公司资料定时复核</strong>
+            <p>每天 09:00 自动检查文件包、引用依据和 Word 导出状态。</p>
+          </article>
+          <button class="automation-create" type="button" id="automationCreateAnother">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+            新建自动任务
+          </button>
+        </section>
+
+        <section class="automation-suggestions" aria-label="推荐自动任务">
+          <article class="automation-card">
+            <div class="automation-card-head">
+              <span class="clock-icon" aria-hidden="true">⏰</span>
+              <strong>今日运势</strong>
+            </div>
+            <p>结合我的生日：2021年12月18日 15:00 生成今日每日运势，写明整体运势好坏、今日宜做事项、避忌事项、专属幸运颜色。</p>
+            <div class="automation-card-foot">
+              <span>每天 9:00</span>
+              <button type="button">添加</button>
+            </div>
+          </article>
+
+          <article class="automation-card">
+            <div class="automation-card-head">
+              <span class="clock-icon" aria-hidden="true">⏰</span>
+              <strong>同花顺机器人板块个股分析</strong>
+            </div>
+            <p>帮我在同花顺里，看下机器人/人形机器人概念板块，查看板块内个股的涨跌、市值、PE 等关键指标，总结成报告。</p>
+            <div class="automation-card-foot">
+              <span>每天 20:00</span>
+              <button type="button">添加</button>
+            </div>
+          </article>
+
+          <article class="automation-card">
+            <div class="automation-card-head">
+              <span class="clock-icon" aria-hidden="true">⏰</span>
+              <strong>地球脉动</strong>
+            </div>
+            <p>告诉我这一刻地球上正在发生什么，按新闻、市场、科技和法律更新做简报。</p>
+            <div class="automation-card-foot">
+              <span>每天 11:00</span>
+              <button type="button">添加</button>
+            </div>
+          </article>
+        </section>
+      </main>
 
       <main class="skills-page" id="skillsPage" hidden>
         <section class="skills-view is-active" id="skillLibraryView" aria-label="Skill库">
