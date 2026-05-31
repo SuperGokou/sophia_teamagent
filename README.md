@@ -35,6 +35,21 @@ For an offline smoke test without calling NVIDIA:
 python -m legal_doc_agent --dry-run --brief-file input/company_brief.md --out outputs/dry_run.docx
 ```
 
+## UI Preview
+
+The local UI lives in `ui/` and can be opened directly:
+
+```powershell
+start ui\index.html
+```
+
+For a local preview server:
+
+```powershell
+cd ui
+python -m http.server 5173 --bind 127.0.0.1
+```
+
 ## Configuration
 
 Environment variables:
