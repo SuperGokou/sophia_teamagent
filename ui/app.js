@@ -151,8 +151,11 @@ const doneCount = document.querySelector("#doneCount");
 const totalCount = document.querySelector("#totalCount");
 const tokenUsed = document.querySelector("#tokenUsed");
 const tokenSaved = document.querySelector("#tokenSaved");
+const tokenUsedNote = document.querySelector("#tokenUsedNote");
+const tokenSavedNote = document.querySelector("#tokenSavedNote");
 const progressValue = document.querySelector("#progressValue");
 const progressBar = document.querySelector("#progressBar");
+const conversationTokenLabel = document.querySelector("#conversationTokenLabel");
 const briefInput = document.querySelector("#briefInput");
 const googleDocInput = document.querySelector("#googleDocInput");
 const googleDocCheckButton = document.querySelector("#googleDocCheckButton");
@@ -186,7 +189,125 @@ let activeIndex = 0;
 let runTimer;
 let conversationDeleted = false;
 let activeSkillFilter = "all";
+let currentRunTokens = 0;
 const conversationDeletedKey = "sophia.conversation.deleted";
+const tokenLedgerKey = "sophia.tokenLedger.v1";
+const currentRunTokenKey = "sophia.currentRunTokens.v1";
+const dailyTokenLimit = 10000000;
+const tokenEstimates = {
+  planner: { used: 5200, saved: 680 },
+  file: { used: 15400, saved: 1200 },
+  browser: { used: 7800, saved: 2300 },
+  reviewer: { used: 5199, saved: 1580 },
+};
+
+function todayKey() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function emptyTokenLedger() {
+  return {
+    date: todayKey(),
+    used: 0,
+    saved: 0,
+    entries: [],
+  };
+}
+
+function readTokenLedger() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(tokenLedgerKey) || "null");
+    if (!parsed || parsed.date !== todayKey()) {
+      return emptyTokenLedger();
+    }
+    return {
+      date: parsed.date,
+      used: Number(parsed.used) || 0,
+      saved: Number(parsed.saved) || 0,
+      entries: Array.isArray(parsed.entries) ? parsed.entries : [],
+    };
+  } catch {
+    return emptyTokenLedger();
+  }
+}
+
+function writeTokenLedger(ledger) {
+  try {
+    window.localStorage.setItem(tokenLedgerKey, JSON.stringify(ledger));
+  } catch {
+    // Token display still works for the current session when storage is unavailable.
+  }
+}
+
+function readCurrentRunTokens() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(currentRunTokenKey) || "null");
+    if (!parsed || parsed.date !== todayKey()) {
+      return 0;
+    }
+    return Number(parsed.tokens) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function writeCurrentRunTokens(tokens) {
+  try {
+    window.localStorage.setItem(
+      currentRunTokenKey,
+      JSON.stringify({ date: todayKey(), tokens }),
+    );
+  } catch {
+    // The top-level daily token ledger is enough when per-run storage is unavailable.
+  }
+}
+
+function formatTokenCount(value) {
+  return String(Math.max(0, Math.round(value)));
+}
+
+function updateTokenDisplay(ledger = readTokenLedger()) {
+  tokenUsed.textContent = formatTokenCount(ledger.used);
+  tokenSaved.textContent = formatTokenCount(ledger.saved);
+  const usedPercent = ledger.used
+    ? Math.max(1, Math.min(100, Math.round((ledger.used / dailyTokenLimit) * 100)))
+    : 0;
+  tokenUsed.closest("article").style.setProperty("--token-progress", `${usedPercent}%`);
+  const savedProgress = ledger.used ? Math.min(100, Math.round((ledger.saved / ledger.used) * 100)) : 0;
+  tokenSaved.closest("article").style.setProperty("--token-progress", `${savedProgress}%`);
+  tokenUsedNote.textContent = `${ledger.entries.length} 条记录 · 今日累计`;
+  tokenSavedNote.textContent = savedProgress
+    ? `缓存与本地复用节省 ${savedProgress}%`
+    : "缓存与本地复用节省";
+  conversationTokenLabel.textContent = `累计Token消耗${formatTokenCount(currentRunTokens)}`;
+}
+
+function addTokenRecord(agent) {
+  const estimate = tokenEstimates[agent.id] || { used: 0, saved: 0 };
+  const ledger = readTokenLedger();
+  const entry = {
+    at: new Date().toISOString(),
+    conversation: summarizeBrief(),
+    agent: agent.name,
+    model: agent.model,
+    used: estimate.used,
+    saved: estimate.saved,
+  };
+  const nextLedger = {
+    ...ledger,
+    used: ledger.used + estimate.used,
+    saved: ledger.saved + estimate.saved,
+    entries: [...ledger.entries, entry].slice(-80),
+  };
+  currentRunTokens += estimate.used;
+  writeCurrentRunTokens(currentRunTokens);
+  writeTokenLedger(nextLedger);
+  updateTokenDisplay(nextLedger);
+}
 
 function readConversationDeleted() {
   try {
@@ -458,9 +579,12 @@ function deleteConversation(event) {
   window.clearInterval(runTimer);
   writeConversationDeleted(true);
   setConversationDeleted(true);
+  currentRunTokens = 0;
+  writeCurrentRunTokens(currentRunTokens);
   officeStage.classList.remove("is-running");
   activate("planner");
   setProgress(18);
+  updateTokenDisplay();
 }
 
 document.querySelectorAll(".agent-node").forEach((node) => {
@@ -479,6 +603,8 @@ function prepareNewConversation() {
   showOfficeView();
   restoreConversation();
   setConversationOpen(false);
+  currentRunTokens = 0;
+  writeCurrentRunTokens(currentRunTokens);
   officeStage.classList.remove("is-running");
   runStatus.textContent = "待输入";
   runningCount.textContent = "0";
@@ -486,6 +612,7 @@ function prepareNewConversation() {
   totalCount.textContent = "1";
   activate("planner");
   setProgress(6);
+  updateTokenDisplay();
   setGoogleDocStatus("warn", "请输入法律文书需求；如需写入 Google Doc，请先粘贴可编辑链接。");
   briefInput.focus();
 }
@@ -506,6 +633,9 @@ function startLegalDraftRun() {
     return;
   }
 
+  currentRunTokens = 0;
+  writeCurrentRunTokens(currentRunTokens);
+  updateTokenDisplay();
   updateConversationTitle(summarizeBrief(), "多 Agent 协作草拟中");
   officeStage.classList.add("is-running");
   runStatus.textContent = "进行中";
@@ -521,8 +651,7 @@ function startLegalDraftRun() {
   runTimer = window.setInterval(() => {
     step += 1;
     progress += 22;
-    tokenUsed.textContent = String(Number(tokenUsed.textContent) + 8399);
-    tokenSaved.textContent = String(Number(tokenSaved.textContent) + 1440);
+    addTokenRecord(agents[step - 1]);
     setProgress(progress);
 
     if (step < agents.length) {
@@ -557,6 +686,7 @@ exportButton.addEventListener("click", () => {
   const payload = {
     brief: briefInput.value,
     googleDocUrl: googleDocInput.value.trim(),
+    tokenLedger: readTokenLedger(),
     activeAgent: activeAgent().name,
     agents: agents.map(({ id, model, role, step }) => ({ id, model, role, step })),
     exportedAt: new Date().toISOString(),
@@ -637,5 +767,10 @@ document.addEventListener("keydown", (event) => {
 
 activate("planner");
 setProgress(18);
+currentRunTokens = readCurrentRunTokens();
 setConversationDeleted(readConversationDeleted());
+if (conversationDeleted) {
+  currentRunTokens = 0;
+}
+updateTokenDisplay();
 renderSkills();

@@ -1314,10 +1314,11 @@ svg {
 }
 
 .metrics article {
+  --token-progress: 0%;
   min-width: 0;
   display: grid;
   grid-template-rows: auto auto auto;
-  row-gap: 9px;
+  row-gap: 8px;
   align-content: start;
 }
 
@@ -1331,6 +1332,7 @@ svg {
 }
 
 .metrics strong {
+  position: relative;
   display: flex;
   align-items: baseline;
   gap: 4px;
@@ -1341,6 +1343,18 @@ svg {
   border-bottom: 3px solid #ead8b5;
   font-weight: 500;
   white-space: nowrap;
+}
+
+.metrics strong::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -3px;
+  width: var(--token-progress);
+  height: 3px;
+  border-radius: 999px;
+  background: #41d0b8;
+  transition: width 0.28s ease;
 }
 
 .metrics b {
@@ -1363,6 +1377,7 @@ svg {
   margin-top: 0;
   color: var(--muted);
   font-size: 13px;
+  line-height: 1.35;
 }
 
 .detail-panel,

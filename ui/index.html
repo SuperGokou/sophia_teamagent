@@ -185,11 +185,12 @@ Special notes:</textarea>
           <article>
             <span>今日消耗Token</span>
             <strong><b id="tokenUsed">0</b><em>/1000万</em></strong>
+            <small id="tokenUsedNote">今日累计记录</small>
           </article>
           <article>
             <span>今日节省Token</span>
             <strong><b id="tokenSaved">0</b></strong>
-            <small>使用本地模型节省</small>
+            <small id="tokenSavedNote">缓存与本地复用节省</small>
           </article>
         </section>
 
@@ -217,7 +218,7 @@ Special notes:</textarea>
             <button class="conversation-row" type="button" id="conversationRow" aria-expanded="false" aria-controls="conversationOpenCard">
               <div>
                 <strong>公司设立文件包，为什么会...</strong>
-                <span>累计Token消耗33599</span>
+                <span id="conversationTokenLabel">累计Token消耗0</span>
               </div>
               <div>
                 <em id="runStatus">已完成</em>
