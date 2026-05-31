@@ -281,15 +281,100 @@ Special notes:</textarea>
         </section>
 
         <section class="automation-active" id="automationActive" hidden>
-          <article>
-            <span>已启用</span>
-            <strong>公司资料定时复核</strong>
-            <p>每天 09:00 自动检查文件包、引用依据和 Word 导出状态。</p>
-          </article>
+          <div class="automation-list-head">
+            <div>
+              <span>已启用自动任务</span>
+              <strong id="automationCountLabel">0 个任务</strong>
+            </div>
+            <p>任务会按设定时间调用多 Agent 流程；最终由 Reviewer 做质量门审核。</p>
+          </div>
+          <div class="automation-task-list" id="automationTaskList"></div>
           <button class="automation-create" type="button" id="automationCreateAnother">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
             新建自动任务
           </button>
+        </section>
+
+        <section class="automation-composer" id="automationComposer" hidden>
+          <form class="automation-composer-card" id="automationForm" aria-labelledby="automationComposerTitle">
+            <header>
+              <div>
+                <span>Automation</span>
+                <h2 id="automationComposerTitle">新建自动任务</h2>
+              </div>
+              <button class="icon-button" type="button" id="automationComposerClose" aria-label="关闭">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              </button>
+            </header>
+
+            <div class="automation-form-grid">
+              <label>
+                <span>任务名称</span>
+                <input id="automationTaskTitle" name="title" type="text" maxlength="48" required placeholder="例如：公司资料定时复核" />
+              </label>
+
+              <label>
+                <span>工作流</span>
+                <select id="automationWorkflow" name="workflow">
+                  <option value="legal-review">法律文书复核</option>
+                  <option value="google-doc-layout">Google Doc 法律版式整理</option>
+                  <option value="rag-refresh">法律知识库增量更新</option>
+                  <option value="word-export">Word 导出质量检查</option>
+                </select>
+              </label>
+
+              <label>
+                <span>频率</span>
+                <select id="automationFrequency" name="frequency">
+                  <option value="daily">每天</option>
+                  <option value="weekly">每周一</option>
+                  <option value="workday">工作日</option>
+                  <option value="manual">仅手动</option>
+                </select>
+              </label>
+
+              <label>
+                <span>执行时间</span>
+                <input id="automationTime" name="time" type="time" value="09:00" />
+              </label>
+
+              <label class="is-wide">
+                <span>执行内容</span>
+                <textarea id="automationInstruction" name="instruction" rows="4" maxlength="420" required placeholder="描述这个自动任务要检查、生成或更新什么。"></textarea>
+              </label>
+
+              <label class="is-wide">
+                <span>Google Doc 编辑链接（可选）</span>
+                <input id="automationDocLink" name="docUrl" type="url" placeholder="https://docs.google.com/document/d/.../edit" />
+              </label>
+            </div>
+
+            <div class="automation-agent-route" aria-label="Agent 路由">
+              <span>Planner</span>
+              <i></i>
+              <span>Retriever</span>
+              <i></i>
+              <span>Drafter</span>
+              <i></i>
+              <span>Reviewer</span>
+            </div>
+
+            <label class="automation-switch">
+              <input id="automationRequireReview" name="requireReview" type="checkbox" checked />
+              <span>
+                <strong>启用最终审核</strong>
+                <small>Reviewer 会检查完整性、引用依据、格式和 Google Doc 权限提示。</small>
+              </span>
+            </label>
+
+            <footer>
+              <p id="automationFormStatus" role="status"></p>
+              <div>
+                <button class="secondary-button" type="button" id="automationCancel">取消</button>
+                <button class="automation-create" type="submit">启用自动任务</button>
+              </div>
+            </footer>
+          </form>
         </section>
       </main>
 

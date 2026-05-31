@@ -174,6 +174,20 @@ const automationPage = document.querySelector("#automationPage");
 const automationEmpty = document.querySelector("#automationEmpty");
 const automationActive = document.querySelector("#automationActive");
 const automationCreateButtons = document.querySelectorAll("#automationCreateButton, #automationCreateAnother");
+const automationCountLabel = document.querySelector("#automationCountLabel");
+const automationTaskList = document.querySelector("#automationTaskList");
+const automationComposer = document.querySelector("#automationComposer");
+const automationForm = document.querySelector("#automationForm");
+const automationComposerClose = document.querySelector("#automationComposerClose");
+const automationCancel = document.querySelector("#automationCancel");
+const automationTaskTitle = document.querySelector("#automationTaskTitle");
+const automationWorkflow = document.querySelector("#automationWorkflow");
+const automationFrequency = document.querySelector("#automationFrequency");
+const automationTime = document.querySelector("#automationTime");
+const automationInstruction = document.querySelector("#automationInstruction");
+const automationDocLink = document.querySelector("#automationDocLink");
+const automationRequireReview = document.querySelector("#automationRequireReview");
+const automationFormStatus = document.querySelector("#automationFormStatus");
 const skillsPage = document.querySelector("#skillsPage");
 const skillLibraryView = document.querySelector("#skillLibraryView");
 const mySkillsView = document.querySelector("#mySkillsView");
@@ -189,15 +203,30 @@ let runTimer;
 let conversationDeleted = false;
 let activeSkillFilter = "all";
 let currentRunTokens = 0;
+let automationTasks = [];
 const conversationDeletedKey = "sophia.conversation.deleted";
 const tokenLedgerKey = "sophia.tokenLedger.v1";
 const currentRunTokenKey = "sophia.currentRunTokens.v1";
+const automationTasksKey = "sophia.automation.tasks.v1";
 const dailyTokenLimit = 10000000;
 const tokenEstimates = {
   planner: { used: 5200, saved: 680 },
   file: { used: 15400, saved: 1200 },
   browser: { used: 7800, saved: 2300 },
   reviewer: { used: 5199, saved: 1580 },
+};
+const automationTokenEstimate = { used: 2400, saved: 760 };
+const automationWorkflows = {
+  "legal-review": "法律文书复核",
+  "google-doc-layout": "Google Doc 法律版式整理",
+  "rag-refresh": "法律知识库增量更新",
+  "word-export": "Word 导出质量检查",
+};
+const automationFrequencies = {
+  daily: "每天",
+  weekly: "每周一",
+  workday: "工作日",
+  manual: "仅手动",
 };
 
 function todayKey() {
@@ -306,6 +335,256 @@ function addTokenRecord(agent) {
   writeCurrentRunTokens(currentRunTokens);
   writeTokenLedger(nextLedger);
   updateTokenDisplay(nextLedger);
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (char) => (
+    {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    }[char]
+  ));
+}
+
+function createAutomationId() {
+  return `task-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function readAutomationTasks() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(automationTasksKey) || "[]");
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed
+      .map((task) => ({
+        id: String(task.id || createAutomationId()),
+        title: String(task.title || "").trim(),
+        workflow: automationWorkflows[task.workflow] ? task.workflow : "legal-review",
+        frequency: automationFrequencies[task.frequency] ? task.frequency : "daily",
+        time: /^\d{2}:\d{2}$/.test(task.time || "") ? task.time : "09:00",
+        instruction: String(task.instruction || "").trim(),
+        docUrl: String(task.docUrl || "").trim(),
+        requireReview: task.requireReview !== false,
+        enabled: task.enabled !== false,
+        lastRunAt: task.lastRunAt || "",
+        createdAt: task.createdAt || new Date().toISOString(),
+      }))
+      .filter((task) => task.title && task.instruction);
+  } catch {
+    return [];
+  }
+}
+
+function writeAutomationTasks() {
+  try {
+    window.localStorage.setItem(automationTasksKey, JSON.stringify(automationTasks));
+  } catch {
+    setAutomationFormStatus("warn", "当前浏览器无法持久保存，但任务已在本次会话中启用。");
+  }
+}
+
+function automationScheduleLabel(task) {
+  if (task.frequency === "manual") {
+    return "仅手动触发";
+  }
+  return `${automationFrequencies[task.frequency]} ${task.time || "09:00"}`;
+}
+
+function automationLastRunLabel(task) {
+  if (!task.lastRunAt) {
+    return "尚未运行";
+  }
+  const date = new Date(task.lastRunAt);
+  if (Number.isNaN(date.getTime())) {
+    return "尚未运行";
+  }
+  return `上次 ${date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`;
+}
+
+function setAutomationFormStatus(kind, message) {
+  automationFormStatus.classList.remove("is-ok", "is-warn", "is-error");
+  if (kind) {
+    automationFormStatus.classList.add(`is-${kind}`);
+  }
+  automationFormStatus.textContent = message || "";
+}
+
+function renderAutomationTasks() {
+  const hasTasks = automationTasks.length > 0;
+  const enabledCount = automationTasks.filter((task) => task.enabled).length;
+
+  automationEmpty.hidden = hasTasks;
+  automationActive.hidden = !hasTasks;
+  automationCountLabel.textContent = `${enabledCount} 个启用 / ${automationTasks.length} 个总计`;
+
+  if (!hasTasks) {
+    automationTaskList.innerHTML = "";
+    return;
+  }
+
+  automationTaskList.innerHTML = automationTasks
+    .map((task) => {
+      const status = task.enabled ? "已启用" : "已暂停";
+      const reviewLabel = task.requireReview ? "Reviewer 最终审核" : "无最终审核";
+      const docLabel = task.docUrl ? "已绑定 Google Doc" : "未绑定 Google Doc";
+
+      return `
+        <article class="automation-task-card ${task.enabled ? "" : "is-paused"}" data-automation-id="${escapeHtml(task.id)}">
+          <header>
+            <div>
+              <span>${status}</span>
+              <strong>${escapeHtml(task.title)}</strong>
+            </div>
+            <em>${escapeHtml(automationWorkflows[task.workflow])}</em>
+          </header>
+          <p>${escapeHtml(task.instruction)}</p>
+          <div class="automation-task-meta">
+            <span>${escapeHtml(automationScheduleLabel(task))}</span>
+            <span>${escapeHtml(reviewLabel)}</span>
+            <span>${escapeHtml(docLabel)}</span>
+            <span>${escapeHtml(automationLastRunLabel(task))}</span>
+          </div>
+          <footer>
+            <button type="button" data-automation-action="run" data-automation-id="${escapeHtml(task.id)}">运行一次</button>
+            <button type="button" data-automation-action="toggle" data-automation-id="${escapeHtml(task.id)}">${task.enabled ? "暂停" : "启用"}</button>
+            <button class="is-danger" type="button" data-automation-action="delete" data-automation-id="${escapeHtml(task.id)}">删除</button>
+          </footer>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function openAutomationComposer() {
+  automationForm.reset();
+  automationTaskTitle.value = automationTasks.length ? "" : "公司资料定时复核";
+  automationWorkflow.value = "legal-review";
+  automationFrequency.value = "daily";
+  automationTime.value = "09:00";
+  automationInstruction.value = automationTasks.length
+    ? ""
+    : "自动检查文件包、引用依据、Word 导出状态和 Google Doc 权限，最后由 Reviewer 输出风险提示。";
+  automationRequireReview.checked = true;
+  setAutomationFormStatus(
+    "warn",
+    "Google Doc 链接会先检查格式；真正运行时还需要后端确认 Editor 权限。",
+  );
+  automationComposer.hidden = false;
+  window.requestAnimationFrame(() => automationTaskTitle.focus());
+}
+
+function closeAutomationComposer() {
+  automationComposer.hidden = true;
+}
+
+function validateAutomationForm() {
+  const title = automationTaskTitle.value.trim();
+  const instruction = automationInstruction.value.trim();
+  const docUrl = automationDocLink.value.trim();
+
+  if (!title || !instruction) {
+    setAutomationFormStatus("error", "请填写任务名称和执行内容。");
+    return false;
+  }
+
+  if (docUrl) {
+    const documentId = extractGoogleDocIdFromUrl(docUrl);
+    const hasEditPath = /\/edit(?:[?#]|$)/.test(docUrl);
+    if (!documentId || !hasEditPath) {
+      setAutomationFormStatus("error", "Google Doc 必须使用 docs.google.com/document/d/.../edit 编辑链接。");
+      automationDocLink.focus();
+      return false;
+    }
+  }
+
+  if (automationWorkflow.value === "google-doc-layout" && !docUrl) {
+    setAutomationFormStatus("error", "Google Doc 法律版式整理任务需要填写可编辑文档链接。");
+    automationDocLink.focus();
+    return false;
+  }
+
+  return true;
+}
+
+function handleAutomationSubmit(event) {
+  event.preventDefault();
+  if (!validateAutomationForm()) {
+    return;
+  }
+
+  const task = {
+    id: createAutomationId(),
+    title: automationTaskTitle.value.trim(),
+    workflow: automationWorkflow.value,
+    frequency: automationFrequency.value,
+    time: automationTime.value || "09:00",
+    instruction: automationInstruction.value.trim(),
+    docUrl: automationDocLink.value.trim(),
+    requireReview: automationRequireReview.checked,
+    enabled: true,
+    lastRunAt: "",
+    createdAt: new Date().toISOString(),
+  };
+
+  automationTasks = [task, ...automationTasks];
+  writeAutomationTasks();
+  renderAutomationTasks();
+  closeAutomationComposer();
+}
+
+function addAutomationTokenRecord(task) {
+  const ledger = readTokenLedger();
+  const entry = {
+    at: new Date().toISOString(),
+    conversation: task.title,
+    agent: "Automation Scheduler",
+    model: automationWorkflows[task.workflow],
+    used: automationTokenEstimate.used,
+    saved: automationTokenEstimate.saved,
+  };
+  const nextLedger = {
+    ...ledger,
+    used: ledger.used + automationTokenEstimate.used,
+    saved: ledger.saved + automationTokenEstimate.saved,
+    entries: [...ledger.entries, entry].slice(-80),
+  };
+  writeTokenLedger(nextLedger);
+  updateTokenDisplay(nextLedger);
+}
+
+function handleAutomationTaskAction(event) {
+  const actionButton = event.target.closest("[data-automation-action]");
+  if (!actionButton) {
+    return;
+  }
+
+  const taskId = actionButton.dataset.automationId;
+  const task = automationTasks.find((item) => item.id === taskId);
+  if (!task) {
+    return;
+  }
+
+  if (actionButton.dataset.automationAction === "delete") {
+    automationTasks = automationTasks.filter((item) => item.id !== taskId);
+  }
+
+  if (actionButton.dataset.automationAction === "toggle") {
+    task.enabled = !task.enabled;
+  }
+
+  if (actionButton.dataset.automationAction === "run") {
+    task.enabled = true;
+    task.lastRunAt = new Date().toISOString();
+    addAutomationTokenRecord(task);
+  }
+
+  writeAutomationTasks();
+  renderAutomationTasks();
 }
 
 function readConversationDeleted() {
@@ -479,8 +758,7 @@ function showAutomationPage() {
 
 function createAutomationTask(event) {
   const sourceButton = event.currentTarget;
-  automationEmpty.hidden = true;
-  automationActive.hidden = false;
+  openAutomationComposer();
   sourceButton.blur();
 }
 
@@ -708,6 +986,10 @@ automationButton.addEventListener("click", showAutomationPage);
 automationCreateButtons.forEach((button) => {
   button.addEventListener("click", createAutomationTask);
 });
+automationForm.addEventListener("submit", handleAutomationSubmit);
+automationComposerClose.addEventListener("click", closeAutomationComposer);
+automationCancel.addEventListener("click", closeAutomationComposer);
+automationTaskList.addEventListener("click", handleAutomationTaskAction);
 skillMarketButton.addEventListener("click", showSkillsPage);
 officeButton.addEventListener("click", showOfficeView);
 mySkillsButton.addEventListener("click", showMySkillsView);
@@ -751,6 +1033,7 @@ document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") {
     return;
   }
+  closeAutomationComposer();
   loginPanel.classList.remove("is-open");
   loginButton.setAttribute("aria-expanded", "false");
 });
@@ -758,6 +1041,8 @@ document.addEventListener("keydown", (event) => {
 activate("planner");
 setProgress(18);
 currentRunTokens = readCurrentRunTokens();
+automationTasks = readAutomationTasks();
+renderAutomationTasks();
 setConversationDeleted(readConversationDeleted());
 if (conversationDeleted) {
   currentRunTokens = 0;
