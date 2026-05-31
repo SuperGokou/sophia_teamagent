@@ -72,12 +72,20 @@
           </button>
         </section>
 
-        <div class="profile">
-          <div class="avatar">G</div>
-          <strong>GoKou</strong>
-          <button class="phone-button" type="button" aria-label="设备">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm3 17h2" /></svg>
+        <div class="login-area">
+          <button class="login-button" type="button" id="loginButton" aria-expanded="false" aria-controls="loginPanel">
+            <span class="login-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3" /></svg>
+            </span>
+            <span>Login</span>
           </button>
+          <form class="login-panel" id="loginPanel">
+            <label>
+              <span>Email</span>
+              <input type="email" placeholder="you@example.com" autocomplete="email" />
+            </label>
+            <button type="button">Continue</button>
+          </form>
         </div>
       </aside>
 

@@ -48,6 +48,8 @@ const tokenSaved = document.querySelector("#tokenSaved");
 const progressValue = document.querySelector("#progressValue");
 const progressBar = document.querySelector("#progressBar");
 const briefInput = document.querySelector("#briefInput");
+const loginButton = document.querySelector("#loginButton");
+const loginPanel = document.querySelector("#loginPanel");
 
 let activeIndex = 0;
 let runTimer;
@@ -169,6 +171,23 @@ exportButton.addEventListener("click", () => {
   link.download = "sophia-teamagent-brief.json";
   link.click();
   URL.revokeObjectURL(link.href);
+});
+
+loginButton.addEventListener("click", () => {
+  const isOpen = loginPanel.classList.toggle("is-open");
+  loginButton.setAttribute("aria-expanded", String(isOpen));
+});
+
+loginPanel.addEventListener("submit", (event) => {
+  event.preventDefault();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") {
+    return;
+  }
+  loginPanel.classList.remove("is-open");
+  loginButton.setAttribute("aria-expanded", "false");
 });
 
 activate("planner");
