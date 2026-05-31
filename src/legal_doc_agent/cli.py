@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -10,12 +11,18 @@ from legal_doc_agent.agents import NvidiaAgentRouter, load_agent_profiles_from_e
 from legal_doc_agent.config import ConfigurationError, NvidiaConfig
 from legal_doc_agent.nvidia import NvidiaClient, ProviderError
 from legal_doc_agent.harness import DryRunClient, LegalDocumentAgent
+from legal_doc_agent.legal_kb import FIRST_PHASE_CONNECTORS, LegalKnowledgeBase, SearchHit
 
 
 DEFAULT_SPEC_PATH = Path("prompts/delaware_c_corp_post_formation.txt")
 
 
 def main(argv: list[str] | None = None) -> int:
+    if argv is None:
+        argv = sys.argv[1:]
+    if argv and argv[0] == "kb":
+        return _kb_main(argv[1:])
+
     parser = _build_parser()
     args = parser.parse_args(argv)
 
@@ -44,14 +51,16 @@ def main(argv: list[str] | None = None) -> int:
         else:
             base_config = NvidiaConfig.from_env(base_url=args.base_url)
             client = NvidiaAgentRouter(base_config=base_config)
+        knowledge_context = _load_knowledge_context(args)
         agent = LegalDocumentAgent(client)
         result = agent.generate(
             specification_path=args.spec,
             brief=brief,
             output_path=args.out,
             artifact_dir=args.artifact_dir,
+            knowledge_context=knowledge_context,
         )
-    except (ConfigurationError, FileNotFoundError, ProviderError, ValueError) as exc:
+    except (ConfigurationError, FileNotFoundError, ProviderError, ValueError, sqlite3.Error) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
 
@@ -113,6 +122,15 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Create a placeholder DOCX without calling NVIDIA.",
     )
+    parser.add_argument("--kb-db", type=Path, help="SQLite legal knowledge base path.")
+    parser.add_argument("--kb-query", help="Search query for supplemental legal authority context.")
+    parser.add_argument("--kb-citation", help="Exact citation to retrieve from the legal KB.")
+    parser.add_argument(
+        "--kb-limit",
+        type=int,
+        default=6,
+        help="Maximum legal KB search hits to inject into generation prompts.",
+    )
     return parser
 
 
@@ -148,6 +166,196 @@ def _print_agent_profiles() -> None:
             f"thinking={thinking}, enable_thinking={enable_thinking}, "
             f"reasoning_budget={reasoning_budget}, stream={str(profile.stream).lower()}"
         )
+
+
+def _load_knowledge_context(args: argparse.Namespace) -> str | None:
+    if not args.kb_db:
+        if args.kb_query or args.kb_citation:
+            raise ValueError("Provide --kb-db when using --kb-query or --kb-citation.")
+        return None
+    if not args.kb_query and not args.kb_citation:
+        return None
+
+    kb = LegalKnowledgeBase(args.kb_db)
+    query = args.kb_query or args.kb_citation or ""
+    hits = kb.search(query, citation=args.kb_citation, limit=args.kb_limit)
+    if not hits:
+        return "No local legal authority hits were found. Do not cite the local KB."
+    return _format_kb_hits(hits)
+
+
+def _format_kb_hits(hits: list[SearchHit]) -> str:
+    blocks: list[str] = []
+    for index, hit in enumerate(hits, start=1):
+        excerpt = " ".join(hit.text.split())
+        if len(excerpt) > 900:
+            excerpt = excerpt[:897].rstrip() + "..."
+        blocks.append(
+            "\n".join(
+                [
+                    f"[{index}] {hit.citation} - {hit.heading}",
+                    f"source: {hit.source_key}",
+                    f"retrieval_mode: {hit.retrieval_mode}",
+                    f"version_date: {hit.version_date or 'unknown'}",
+                    f"effective_date: {hit.effective_date or 'unknown'}",
+                    f"url: {hit.url}",
+                    f"excerpt: {excerpt}",
+                ]
+            )
+        )
+    return "\n\n".join(blocks)
+
+
+def _kb_main(argv: list[str]) -> int:
+    parser = _build_kb_parser()
+    args = parser.parse_args(argv)
+    try:
+        kb = LegalKnowledgeBase(args.db)
+        if args.command == "init":
+            kb.initialize()
+            print(f"Initialized {args.db}")
+            if args.seed_sources:
+                sources = kb.seed_connector_sources()
+                print(f"Seeded {len(sources)} official source definitions")
+            return 0
+        if args.command == "seed-sources":
+            kb.initialize()
+            sources = kb.seed_connector_sources()
+            for source in sources:
+                print(f"{source.key}\t{source.name}\t{source.official_level}")
+            return 0
+        if args.command == "sources":
+            return _kb_print_sources(kb)
+        if args.command == "ingest-text":
+            kb.initialize()
+            kb.seed_connector_sources()
+            text = args.text_file.read_text(encoding="utf-8").strip()
+            if not text:
+                raise ValueError(f"Text file is empty: {args.text_file}")
+            document = kb.upsert_document(
+                source_key=args.source_key,
+                citation=args.citation,
+                title=args.title,
+                jurisdiction=args.jurisdiction,
+                doc_type=args.doc_type,
+                effective_date=args.effective_date,
+                version_date=args.version_date,
+                url=args.url,
+            )
+            section = kb.upsert_section(
+                document_id=document.id,
+                citation=args.citation,
+                heading=args.heading,
+                text=text,
+                path=args.section_path or args.citation,
+                order_index=args.order_index,
+            )
+            chunk_id = kb.add_chunk(
+                section_id=section.id,
+                chunk_text=text,
+                token_count=args.token_count or len(text.split()),
+            )
+            print(
+                f"Ingested {args.citation} as document {document.id}, "
+                f"section {section.id}, chunk {chunk_id}"
+            )
+            return 0
+        if args.command == "search":
+            hits = kb.search(args.query, citation=args.citation, limit=args.limit)
+            print(_format_kb_hits(hits) if hits else "No hits")
+            return 0
+        if args.command == "check-citation":
+            check = kb.check_citation(args.citation, required_terms=args.term, limit=args.limit)
+            print(f"citation: {check.citation}")
+            print(f"supported: {str(check.supported).lower()}")
+            if check.missing_terms:
+                print("missing_terms: " + ", ".join(check.missing_terms))
+            if check.hits:
+                print(_format_kb_hits(list(check.hits)))
+            return 0 if check.supported else 2
+        if args.command == "export-obsidian":
+            base = kb.export_obsidian(args.out, matter_name=args.matter_name)
+            print(f"Wrote Obsidian vault notes under {base}")
+            return 0
+        parser.error("unknown kb command")
+    except (sqlite3.Error, ValueError, FileNotFoundError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    return 1
+
+
+def _build_kb_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Manage the local legal knowledge base.")
+    parser.add_argument("--db", type=Path, default=Path("data/legal_kb.sqlite"))
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    init = subparsers.add_parser("init", help="Create the SQLite schema.")
+    _add_kb_db_override(init)
+    init.add_argument("--seed-sources", action="store_true")
+
+    seed_sources = subparsers.add_parser(
+        "seed-sources", help="Insert first-phase official source definitions."
+    )
+    _add_kb_db_override(seed_sources)
+
+    sources = subparsers.add_parser("sources", help="List configured sources.")
+    _add_kb_db_override(sources)
+
+    ingest = subparsers.add_parser("ingest-text", help="Ingest one text file as authority.")
+    _add_kb_db_override(ingest)
+    ingest.add_argument("--source-key", required=True)
+    ingest.add_argument("--citation", required=True)
+    ingest.add_argument("--title", required=True)
+    ingest.add_argument("--jurisdiction", default="US-Federal")
+    ingest.add_argument("--doc-type", default="authority")
+    ingest.add_argument("--url", required=True)
+    ingest.add_argument("--text-file", type=Path, required=True)
+    ingest.add_argument("--heading", default="Text")
+    ingest.add_argument("--section-path")
+    ingest.add_argument("--order-index", type=int, default=1)
+    ingest.add_argument("--version-date")
+    ingest.add_argument("--effective-date")
+    ingest.add_argument("--token-count", type=int)
+
+    search = subparsers.add_parser("search", help="Search sections with FTS5 and citation matching.")
+    _add_kb_db_override(search)
+    search.add_argument("query")
+    search.add_argument("--citation")
+    search.add_argument("--limit", type=int, default=8)
+
+    check = subparsers.add_parser("check-citation", help="Verify a citation exists and has terms.")
+    _add_kb_db_override(check)
+    check.add_argument("citation")
+    check.add_argument("--term", action="append", default=[])
+    check.add_argument("--limit", type=int, default=5)
+
+    export = subparsers.add_parser("export-obsidian", help="Export Markdown notes.")
+    _add_kb_db_override(export)
+    export.add_argument("--out", type=Path, default=Path("outputs/obsidian"))
+    export.add_argument("--matter-name", default="Example Matter")
+
+    return parser
+
+
+def _add_kb_db_override(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--db",
+        type=Path,
+        dest="db",
+        default=argparse.SUPPRESS,
+        help="SQLite legal knowledge base path.",
+    )
+
+
+def _kb_print_sources(kb: LegalKnowledgeBase) -> int:
+    kb.initialize()
+    kb.seed_connector_sources()
+    for connector in FIRST_PHASE_CONNECTORS:
+        print(
+            f"{connector.key}\t{connector.name}\t{connector.jurisdiction}\t"
+            f"{connector.official_level}\t{connector.source_url}"
+        )
+    return 0
 
 
 if __name__ == "__main__":

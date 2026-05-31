@@ -54,6 +54,7 @@ class LegalDocumentAgent:
         brief: str,
         output_path: Path,
         artifact_dir: Path,
+        knowledge_context: str | None = None,
     ) -> AgentResult:
         """Generate section markdown artifacts and a final Word document."""
 
@@ -68,7 +69,17 @@ class LegalDocumentAgent:
             )
         )
 
-        jobs = build_generation_jobs(specification, brief)
+        if knowledge_context:
+            observations.append(
+                Observation(
+                    status="success",
+                    summary="Loaded supplemental legal knowledge base context",
+                    next_actions=["Inject retrieved authorities into generation jobs"],
+                    artifacts=[],
+                )
+            )
+
+        jobs = build_generation_jobs(specification, brief, knowledge_context=knowledge_context)
         observations.append(
             Observation(
                 status="success",

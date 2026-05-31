@@ -36,6 +36,13 @@ class PromptTests(unittest.TestCase):
         self.assertEqual(messages[1]["role"], "user")
         self.assertIn("qualified counsel", messages[0]["content"])
 
+    def test_knowledge_context_is_supplemental(self) -> None:
+        jobs = build_generation_jobs("SPEC", "BRIEF", knowledge_context="15 U.S.C. 77a")
+
+        self.assertIn("SUPPLEMENTAL LEGAL KNOWLEDGE BASE CONTEXT", jobs[0].prompt)
+        self.assertIn("15 U.S.C. 77a", jobs[0].prompt)
+        self.assertIn("Do not invent citations", jobs[0].prompt)
+
 
 if __name__ == "__main__":
     unittest.main()

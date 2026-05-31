@@ -36,11 +36,18 @@ class HarnessTests(unittest.TestCase):
                 brief="Company: Example AI, Inc.",
                 output_path=output,
                 artifact_dir=artifact_dir,
+                knowledge_context="15 U.S.C. 77a",
             )
 
             self.assertTrue(result.output_path.exists())
             self.assertTrue((artifact_dir / "part_a_required_checklist.md").exists())
             self.assertGreaterEqual(len(result.observations), 3)
+            self.assertTrue(
+                any(
+                    "legal knowledge base context" in observation.summary
+                    for observation in result.observations
+                )
+            )
 
     def test_generate_routes_jobs_by_role(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

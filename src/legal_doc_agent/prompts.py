@@ -41,14 +41,30 @@ class GenerationJob:
     agent_role: str
 
 
-def build_generation_jobs(specification: str, brief: str) -> list[GenerationJob]:
+def build_generation_jobs(
+    specification: str,
+    brief: str,
+    knowledge_context: str | None = None,
+) -> list[GenerationJob]:
     """Split the package into bounded generation jobs."""
+
+    supplemental = ""
+    if knowledge_context:
+        supplemental = f"""
+SUPPLEMENTAL LEGAL KNOWLEDGE BASE CONTEXT:
+{knowledge_context}
+
+Use this context only as retrieved authority support. Do not invent citations.
+If the context is incomplete or does not support a claim, say that qualified counsel
+should verify the issue instead of overstating the legal conclusion.
+"""
 
     base_context = f"""SOURCE SPECIFICATION:
 {specification}
 
 USER COMPANY BRIEF:
 {brief}
+{supplemental}
 """
 
     jobs = [

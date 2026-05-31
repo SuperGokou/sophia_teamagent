@@ -35,6 +35,44 @@ For an offline smoke test without calling NVIDIA:
 python -m legal_doc_agent --dry-run --brief-file input/company_brief.md --out outputs/dry_run.docx
 ```
 
+## Legal Knowledge Base MVP
+
+The local legal knowledge base is a SQLite + FTS5 foundation for retrieval-augmented drafting. It is intentionally scoped as a first phase, not a claim that the app has already mirrored all U.S. law.
+
+Initialize the database and seed first-phase official source definitions:
+
+```powershell
+python -m legal_doc_agent kb init --db data/legal_kb.sqlite --seed-sources
+python -m legal_doc_agent kb sources --db data/legal_kb.sqlite
+```
+
+The seeded source registry covers the recommended MVP connectors:
+
+- GovInfo U.S. Code and public-law material
+- eCFR current federal regulations
+- Federal Register recent rules and notices
+- Congress.gov public/private law metadata
+
+Search and citation-check local authority:
+
+```powershell
+python -m legal_doc_agent kb ingest-text --db data/legal_kb.sqlite --source-key govinfo-uscode --citation "15 U.S.C. 77a" --title "Definitions" --url "https://www.govinfo.gov/" --text-file input/authority.txt --heading "Definitions"
+python -m legal_doc_agent kb search "Delaware stockholder consent" --db data/legal_kb.sqlite
+python -m legal_doc_agent kb check-citation "15 U.S.C. 77a" --term issuer --db data/legal_kb.sqlite
+```
+
+Inject retrieved authority context into Word generation:
+
+```powershell
+python -m legal_doc_agent --brief-file input/company_brief.md --kb-db data/legal_kb.sqlite --kb-query "post formation founder equity" --out outputs/post_formation_package.docx
+```
+
+Export a human-readable Obsidian-style workspace from the SQLite source of truth:
+
+```powershell
+python -m legal_doc_agent kb export-obsidian --db data/legal_kb.sqlite --out outputs/obsidian --matter-name "Example AI Inc"
+```
+
 ## UI Preview
 
 The local UI lives in `ui/` and can be opened directly:
