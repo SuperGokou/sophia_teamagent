@@ -35,9 +35,10 @@ class NvidiaClient:
             "temperature": self.config.temperature,
             "top_p": self.config.top_p,
             "max_tokens": self.config.max_tokens,
-            "chat_template_kwargs": {"thinking": self.config.thinking},
             "stream": False,
         }
+        if self.config.thinking is not None:
+            payload["chat_template_kwargs"] = {"thinking": self.config.thinking}
         request = urllib.request.Request(
             f"{self.config.base_url}/chat/completions",
             data=json.dumps(payload).encode("utf-8"),

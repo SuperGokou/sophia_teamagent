@@ -16,12 +16,12 @@ class NvidiaConfig:
 
     api_key: str | None
     base_url: str = "https://integrate.api.nvidia.com/v1"
-    model: str = "deepseek-ai/deepseek-v4-pro"
+    model: str = "openai/gpt-oss-120b"
     timeout_seconds: float = 120.0
     temperature: float = 1.0
-    top_p: float = 0.95
-    max_tokens: int = 16384
-    thinking: bool = False
+    top_p: float = 1.0
+    max_tokens: int = 4096
+    thinking: bool | None = None
 
     @classmethod
     def from_env(
@@ -48,15 +48,15 @@ class NvidiaConfig:
 
         top_p_value = top_p
         if top_p_value is None:
-            top_p_value = float(os.getenv("NVIDIA_TOP_P", "0.95"))
+            top_p_value = float(os.getenv("NVIDIA_TOP_P", "1"))
 
         max_tokens_value = max_tokens
         if max_tokens_value is None:
-            max_tokens_value = int(os.getenv("NVIDIA_MAX_TOKENS", "16384"))
+            max_tokens_value = int(os.getenv("NVIDIA_MAX_TOKENS", "4096"))
 
         thinking_value = thinking
         if thinking_value is None:
-            thinking_value = _parse_bool(os.getenv("NVIDIA_THINKING"), default=False)
+            thinking_value = _parse_optional_bool(os.getenv("NVIDIA_THINKING"))
 
         return cls(
             api_key=api_key or os.getenv("NVIDIA_API_KEY"),
@@ -80,9 +80,9 @@ class NvidiaConfig:
         return self.api_key
 
 
-def _parse_bool(value: str | None, *, default: bool) -> bool:
+def _parse_optional_bool(value: str | None) -> bool | None:
     if value is None or value == "":
-        return default
+        return None
     normalized = value.strip().lower()
     if normalized in {"1", "true", "yes", "y", "on"}:
         return True

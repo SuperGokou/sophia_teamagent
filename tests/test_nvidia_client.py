@@ -26,8 +26,8 @@ class NvidiaClientTests(unittest.TestCase):
         urlopen.return_value = response
         config = NvidiaConfig(
             api_key="key",
-            model="deepseek-ai/deepseek-v4-pro",
-            max_tokens=16384,
+            model="openai/gpt-oss-120b",
+            max_tokens=4096,
         )
         client = NvidiaClient(config)
 
@@ -40,13 +40,30 @@ class NvidiaClientTests(unittest.TestCase):
             "https://integrate.api.nvidia.com/v1/chat/completions",
         )
         payload = json.loads(request.data.decode("utf-8"))
-        self.assertEqual(payload["model"], "deepseek-ai/deepseek-v4-pro")
+        self.assertEqual(payload["model"], "openai/gpt-oss-120b")
         self.assertEqual(payload["messages"][0]["content"], "hello")
         self.assertEqual(payload["temperature"], 1.0)
-        self.assertEqual(payload["top_p"], 0.95)
-        self.assertEqual(payload["max_tokens"], 16384)
-        self.assertEqual(payload["chat_template_kwargs"], {"thinking": False})
+        self.assertEqual(payload["top_p"], 1.0)
+        self.assertEqual(payload["max_tokens"], 4096)
+        self.assertNotIn("chat_template_kwargs", payload)
         self.assertFalse(payload["stream"])
+
+    @patch("urllib.request.urlopen")
+    def test_can_send_thinking_flag_for_models_that_need_it(self, urlopen: Mock) -> None:
+        response = Mock()
+        response.read.return_value = json.dumps(
+            {"choices": [{"message": {"content": "draft"}}]}
+        ).encode("utf-8")
+        response.__enter__ = Mock(return_value=response)
+        response.__exit__ = Mock(return_value=False)
+        urlopen.return_value = response
+        client = NvidiaClient(NvidiaConfig(api_key="key", thinking=False))
+
+        client.complete([{"role": "user", "content": "hello"}])
+
+        request = urlopen.call_args.args[0]
+        payload = json.loads(request.data.decode("utf-8"))
+        self.assertEqual(payload["chat_template_kwargs"], {"thinking": False})
 
 
 if __name__ == "__main__":
