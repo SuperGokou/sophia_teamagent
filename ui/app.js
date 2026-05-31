@@ -35,10 +35,114 @@ const agents = [
 
 const timeline = ["公司资料", "清单规划", "模板草拟", "引用核验", "Word 导出"];
 
+const marketplaceSkills = [
+  {
+    title: "frontend-design",
+    desc: "帮你做更耐看、更有记忆点的页面",
+    source: "Claude",
+    count: "7.6万人添加",
+    icon: "🧩",
+    category: "office",
+  },
+  {
+    title: "brainstorming",
+    desc: "把模糊想法整理成清晰方案和执行路径",
+    source: "GitHub",
+    count: "6.8万人添加",
+    icon: "💡",
+    category: "creative",
+  },
+  {
+    title: "humanizer",
+    desc: "把生硬文案改得更自然、更像真人写作",
+    source: "SkillHub",
+    count: "3.8万人添加",
+    icon: "🖋️",
+    category: "office",
+  },
+  {
+    title: "legal-cite-checker",
+    desc: "检查法条引用、版本日期和来源可信度",
+    source: "Local",
+    count: "3.7万人添加",
+    icon: "⚖️",
+    category: "pro",
+  },
+  {
+    title: "docx-assembler",
+    desc: "把条款、附件、签署页装配成 Word 文档",
+    source: "Sophia",
+    count: "3.4万人添加",
+    icon: "📄",
+    category: "office",
+  },
+  {
+    title: "multi-search-engine",
+    desc: "聚合多个检索源，统一做摘要和去重",
+    source: "ClawHub",
+    count: "3.3万人添加",
+    icon: "🔎",
+    category: "system",
+  },
+  {
+    title: "UI/UX Pro Max",
+    desc: "为当前界面提供设计规范和可落地代码",
+    source: "ClawHub",
+    count: "3.2万人添加",
+    icon: "🪟",
+    category: "office",
+  },
+  {
+    title: "skill-creator",
+    desc: "快速创建和打包自定义 Skill",
+    source: "Claude",
+    count: "3万人添加",
+    icon: "💍",
+    category: "system",
+  },
+  {
+    title: "legal-rag-builder",
+    desc: "构建 SQLite、FTS5、向量检索和引用校验",
+    source: "Local",
+    count: "2.8万人添加",
+    icon: "🧬",
+    category: "pro",
+  },
+  {
+    title: "Find Skills",
+    desc: "根据你的需求查询全网，用已有 skill 完成任务",
+    source: "GitHub",
+    count: "2.7万人添加",
+    icon: "🧪",
+    category: "system",
+  },
+  {
+    title: "business-writing",
+    desc: "撰写商务邮件、报告、合同摘要和备忘录",
+    source: "ClawHub",
+    count: "1.9万人添加",
+    icon: "💼",
+    category: "office",
+  },
+  {
+    title: "Deep Research Skill",
+    desc: "系统化多角度搜索，产出高质量研究结论",
+    source: "GitHub",
+    count: "1.7万人添加",
+    icon: "🧭",
+    category: "pro",
+  },
+];
+
 const agentList = document.querySelector("#agentList");
 const timelineList = document.querySelector("#timeline");
+const appShell = document.querySelector(".app-shell");
+const officeView = document.querySelector(".office");
+const inspectorView = document.querySelector(".inspector");
 const officeStage = document.querySelector("#officeStage");
 const runButton = document.querySelector("#runButton");
+const skillMarketButton = document.querySelector("#skillMarketButton");
+const officeButton = document.querySelector("#officeButton");
 const exportButton = document.querySelector("#exportButton");
 const runStatus = document.querySelector("#runStatus");
 const runningCount = document.querySelector("#runningCount");
@@ -56,10 +160,20 @@ const conversationRow = document.querySelector("#conversationRow");
 const conversationDelete = document.querySelector("#conversationDelete");
 const conversationOpenCard = document.querySelector("#conversationOpenCard");
 const historyItem = document.querySelector("#historyItem");
+const skillsPage = document.querySelector("#skillsPage");
+const skillLibraryView = document.querySelector("#skillLibraryView");
+const mySkillsView = document.querySelector("#mySkillsView");
+const skillGrid = document.querySelector("#skillGrid");
+const skillSearchInput = document.querySelector("#skillSearchInput");
+const mySkillsButton = document.querySelector("#mySkillsButton");
+const skillBackButton = document.querySelector("#skillBackButton");
+const importSkillButton = document.querySelector("#importSkillButton");
+const mySkillsEmpty = document.querySelector("#mySkillsEmpty");
 
 let activeIndex = 0;
 let runTimer;
 let conversationDeleted = false;
+let activeSkillFilter = "all";
 
 function activeAgent() {
   return agents[activeIndex] || agents[0];
@@ -69,6 +183,72 @@ function setProgress(value) {
   const clamped = Math.max(0, Math.min(100, value));
   progressValue.textContent = `${clamped}%`;
   progressBar.style.width = `${clamped}%`;
+}
+
+function renderSkills() {
+  const query = skillSearchInput.value.trim().toLowerCase();
+  const skills = marketplaceSkills.filter((skill) => {
+    const matchesCategory = activeSkillFilter === "all" || skill.category === activeSkillFilter;
+    const matchesQuery = !query || `${skill.title} ${skill.desc} ${skill.source}`.toLowerCase().includes(query);
+    return matchesCategory && matchesQuery;
+  });
+
+  if (!skills.length) {
+    skillGrid.innerHTML = `
+      <div class="skill-no-results">
+        <strong>没有找到匹配的 Skill</strong>
+        <span>换个关键词或切回全部分类。</span>
+      </div>
+    `;
+    return;
+  }
+
+  skillGrid.innerHTML = skills
+    .map(
+      (skill) => `
+        <button class="skill-card" type="button" data-category="${skill.category}">
+          <span class="skill-icon" aria-hidden="true">${skill.icon}</span>
+          <span class="skill-copy">
+            <strong>${skill.title}</strong>
+            <span>${skill.desc}</span>
+            <em>${skill.source} | ${skill.count}</em>
+          </span>
+        </button>
+      `,
+    )
+    .join("");
+}
+
+function showOfficeView() {
+  appShell.classList.remove("is-skills-mode");
+  officeView.hidden = false;
+  inspectorView.hidden = false;
+  skillsPage.hidden = true;
+  skillMarketButton.classList.remove("is-active");
+  officeButton.classList.add("is-active");
+}
+
+function showSkillLibrary() {
+  skillLibraryView.hidden = false;
+  mySkillsView.hidden = true;
+  renderSkills();
+}
+
+function showMySkillsView() {
+  skillLibraryView.hidden = true;
+  mySkillsView.hidden = false;
+}
+
+function showSkillsPage() {
+  window.clearInterval(runTimer);
+  officeStage.classList.remove("is-running");
+  appShell.classList.add("is-skills-mode");
+  officeView.hidden = true;
+  inspectorView.hidden = true;
+  skillsPage.hidden = false;
+  officeButton.classList.remove("is-active");
+  skillMarketButton.classList.add("is-active");
+  showSkillLibrary();
 }
 
 function renderAgents() {
@@ -175,6 +355,7 @@ document.querySelectorAll(".agent-node").forEach((node) => {
 
 runButton.addEventListener("click", () => {
   window.clearInterval(runTimer);
+  showOfficeView();
   restoreConversation();
   setConversationOpen(false);
   officeStage.classList.add("is-running");
@@ -232,6 +413,35 @@ exportButton.addEventListener("click", () => {
 conversationRow.addEventListener("click", openConversation);
 historyItem.addEventListener("click", openConversation);
 conversationDelete.addEventListener("click", deleteConversation);
+skillMarketButton.addEventListener("click", showSkillsPage);
+officeButton.addEventListener("click", showOfficeView);
+mySkillsButton.addEventListener("click", showMySkillsView);
+skillBackButton.addEventListener("click", showSkillLibrary);
+skillSearchInput.addEventListener("input", renderSkills);
+
+document.querySelectorAll("[data-skill-filter]").forEach((chip) => {
+  chip.addEventListener("click", () => {
+    activeSkillFilter = chip.dataset.skillFilter;
+    document.querySelectorAll("[data-skill-filter]").forEach((item) => {
+      item.classList.toggle("is-active", item === chip);
+    });
+    renderSkills();
+  });
+});
+
+skillGrid.addEventListener("click", (event) => {
+  const card = event.target.closest(".skill-card");
+  if (!card) {
+    return;
+  }
+  document.querySelectorAll(".skill-card").forEach((item) => {
+    item.classList.toggle("is-selected", item === card);
+  });
+});
+
+importSkillButton.addEventListener("click", () => {
+  mySkillsEmpty.querySelector("p").textContent = "可以从 Git URL 或本地文件导入技能";
+});
 
 loginButton.addEventListener("click", () => {
   const isOpen = loginPanel.classList.toggle("is-open");
@@ -252,3 +462,4 @@ document.addEventListener("keydown", (event) => {
 
 activate("planner");
 setProgress(18);
+renderSkills();
