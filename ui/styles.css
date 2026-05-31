@@ -223,11 +223,24 @@ svg {
   background: #f2e4c7;
 }
 
+.history-entry {
+  position: relative;
+}
+
 .history-item {
+  width: 100%;
   display: grid;
   gap: 8px;
-  padding: 0 14px;
+  min-height: 56px;
+  padding: 0 44px 0 14px;
+  border-radius: var(--radius);
   color: #555a60;
+}
+
+.history-item:hover,
+.history-item.is-open,
+.history-entry:focus-within .history-item {
+  background: rgba(242, 228, 199, 0.58);
 }
 
 .history-item strong {
@@ -240,6 +253,39 @@ svg {
 .history-item small {
   color: var(--muted);
   font-size: 13px;
+}
+
+.history-delete {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  right: 8px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(217, 191, 145, 0.88);
+  border-radius: var(--radius);
+  color: #6e5546;
+  background: rgba(255, 248, 232, 0.9);
+  opacity: 0.8;
+  transform: translateY(-50%);
+  transition: opacity 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+
+.history-delete svg {
+  width: 17px;
+  height: 17px;
+}
+
+.history-delete:hover,
+.history-delete:focus-visible {
+  opacity: 1;
+  background: #fff;
+}
+
+.history-delete:active {
+  transform: translateY(calc(-50% + 1px));
 }
 
 .login-area {

@@ -160,7 +160,9 @@ const conversationEntry = document.querySelector("#conversationEntry");
 const conversationRow = document.querySelector("#conversationRow");
 const conversationDelete = document.querySelector("#conversationDelete");
 const conversationOpenCard = document.querySelector("#conversationOpenCard");
+const historyEntry = document.querySelector("#historyEntry");
 const historyItem = document.querySelector("#historyItem");
+const historyDelete = document.querySelector("#historyDelete");
 const automationPage = document.querySelector("#automationPage");
 const automationEmpty = document.querySelector("#automationEmpty");
 const automationActive = document.querySelector("#automationActive");
@@ -357,7 +359,8 @@ function setConversationOpen(isOpen) {
 function setConversationDeleted(isDeleted) {
   conversationDeleted = isDeleted;
   conversationEntry.hidden = isDeleted;
-  historyItem.hidden = isDeleted;
+  historyEntry.hidden = isDeleted;
+  historyItem.hidden = false;
   totalCount.textContent = isDeleted ? "0" : "1";
 
   if (isDeleted) {
@@ -471,6 +474,7 @@ exportButton.addEventListener("click", () => {
 conversationRow.addEventListener("click", openConversation);
 historyItem.addEventListener("click", openConversation);
 conversationDelete.addEventListener("click", deleteConversation);
+historyDelete.addEventListener("click", deleteConversation);
 automationButton.addEventListener("click", showAutomationPage);
 automationCreateButtons.forEach((button) => {
   button.addEventListener("click", createAutomationTask);

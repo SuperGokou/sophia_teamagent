@@ -66,10 +66,17 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 17.5A7.6 7.6 0 0 1 5 12a7 7 0 0 1 7-7 7.6 7.6 0 0 1 5.5 3M16 6.5A7.6 7.6 0 0 1 19 12a7 7 0 0 1-7 7 7.6 7.6 0 0 1-5.5-3" /></svg>
             办公室
           </button>
-          <button class="history-item" type="button" id="historyItem">
-            <strong>公司设立文件包，为...</strong>
-            <small>多 Agent 协作草拟中</small>
-          </button>
+          <div class="history-entry" id="historyEntry">
+            <button class="history-item" type="button" id="historyItem">
+              <strong>公司设立文件包，为...</strong>
+              <small>多 Agent 协作草拟中</small>
+            </button>
+            <button class="history-delete" type="button" id="historyDelete" aria-label="删除对话" title="删除对话">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 6h18M8 6V4h8v2m-9 0 1 15h8l1-15M10 10v7m4-7v7" />
+              </svg>
+            </button>
+          </div>
         </section>
 
         <div class="login-area">
