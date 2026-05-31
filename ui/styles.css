@@ -611,7 +611,7 @@ svg {
 .metrics strong {
   display: flex;
   align-items: baseline;
-  gap: 3px;
+  gap: 6px;
   height: 64px;
   margin-top: 0;
   padding-bottom: 0;
@@ -620,14 +620,16 @@ svg {
 }
 
 .metrics b {
-  font-size: 23px;
+  min-width: 20px;
+  font-size: 24px;
   line-height: 1;
 }
 
 .metrics em {
   color: #b9bbbf;
-  font-size: 23px;
+  font-size: 21px;
   font-style: normal;
+  font-weight: 800;
   line-height: 1;
 }
 
