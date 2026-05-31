@@ -11,6 +11,11 @@ from legal_doc_agent.agents import NvidiaAgentRouter, load_agent_profiles_from_e
 from legal_doc_agent.config import ConfigurationError, NvidiaConfig
 from legal_doc_agent.nvidia import NvidiaClient, ProviderError
 from legal_doc_agent.harness import DryRunClient, LegalDocumentAgent
+from legal_doc_agent.google_docs import (
+    GoogleDocPermissionError,
+    build_google_docs_formatter,
+    extract_google_doc_id,
+)
 from legal_doc_agent.legal_kb import FIRST_PHASE_CONNECTORS, LegalKnowledgeBase, SearchHit
 
 
@@ -22,6 +27,8 @@ def main(argv: list[str] | None = None) -> int:
         argv = sys.argv[1:]
     if argv and argv[0] == "kb":
         return _kb_main(argv[1:])
+    if argv and argv[0] == "google-doc":
+        return _google_doc_main(argv[1:])
 
     parser = _build_parser()
     args = parser.parse_args(argv)
@@ -284,6 +291,42 @@ def _kb_main(argv: list[str]) -> int:
     return 1
 
 
+def _google_doc_main(argv: list[str]) -> int:
+    parser = _build_google_doc_parser()
+    args = parser.parse_args(argv)
+    try:
+        extract_google_doc_id(args.url)
+        formatter = build_google_docs_formatter(
+            credentials_path=args.credentials,
+            token_path=args.token,
+        )
+        if args.command == "check":
+            check = formatter.check_editor_access(args.url)
+            print(f"document_id: {check.document_id}")
+            if check.title:
+                print(f"title: {check.title}")
+            print(f"can_edit: {str(check.can_edit).lower()}")
+            print(f"message: {check.message}")
+            if check.next_actions:
+                print("next_actions:")
+                for action in check.next_actions:
+                    print(f"- {action}")
+            return 0 if check.can_edit else 2
+        if args.command == "format":
+            result = formatter.apply_legal_layout(args.url)
+            print(f"document_id: {result.document_id}")
+            if result.title:
+                print(f"title: {result.title}")
+            print(f"requests_sent: {result.requests_sent}")
+            print(result.summary)
+            return 0
+        parser.error("unknown google-doc command")
+    except (RuntimeError, FileNotFoundError, ValueError, GoogleDocPermissionError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    return 1
+
+
 def _build_kb_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Manage the local legal knowledge base.")
     parser.add_argument("--db", type=Path, default=Path("data/legal_kb.sqlite"))
@@ -334,6 +377,31 @@ def _build_kb_parser() -> argparse.ArgumentParser:
     export.add_argument("--out", type=Path, default=Path("outputs/obsidian"))
     export.add_argument("--matter-name", default="Example Matter")
 
+    return parser
+
+
+def _build_google_doc_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Check or format an editable Google Doc.")
+    parser.add_argument(
+        "--credentials",
+        type=Path,
+        default=Path("credentials/google_oauth_client.json"),
+        help="Google OAuth desktop-client credentials JSON.",
+    )
+    parser.add_argument(
+        "--token",
+        type=Path,
+        default=Path("credentials/google_token.json"),
+        help="Local OAuth token cache path. Keep this file out of git.",
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    check = subparsers.add_parser("check", help="Verify Editor permission.")
+    check.add_argument("url")
+    format_doc = subparsers.add_parser(
+        "format",
+        help="Apply standard legal-document layout.",
+    )
+    format_doc.add_argument("url")
     return parser
 
 

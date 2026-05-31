@@ -7,7 +7,11 @@ from pathlib import Path
 from typing import Protocol
 
 from legal_doc_agent.docx_writer import DocumentSection, write_docx
-from legal_doc_agent.prompts import build_generation_jobs, messages_for_job
+from legal_doc_agent.prompts import (
+    build_final_review_job,
+    build_generation_jobs,
+    messages_for_job,
+)
 
 
 class CompletionClient(Protocol):
@@ -104,6 +108,28 @@ class LegalDocumentAgent:
                     artifacts=[str(artifact_path)],
                 )
             )
+
+        review_job = build_final_review_job(
+            specification,
+            brief,
+            sections,
+            knowledge_context=knowledge_context,
+        )
+        review_content = self._client.complete(
+            messages_for_job(review_job),
+            role=review_job.agent_role,
+        )
+        review_artifact_path = artifact_dir / f"{review_job.job_id}.md"
+        review_artifact_path.write_text(review_content, encoding="utf-8")
+        sections.append(DocumentSection(title=review_job.title, markdown=review_content))
+        observations.append(
+            Observation(
+                status="success",
+                summary=f"Reviewed final package with {review_job.agent_role}",
+                next_actions=["Write reviewed Word document"],
+                artifacts=[str(review_artifact_path)],
+            )
+        )
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
         write_docx(

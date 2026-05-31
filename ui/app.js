@@ -10,30 +10,30 @@ const agents = [
   {
     id: "file",
     name: "File Agent",
-    model: "qwen/qwen3-coder-480b-a35b-instruct",
-    role: "文件装配",
-    detail: "管理模板、DOCX 结构、附件和批量生成脚本。",
-    step: "DOCX assembly",
+    model: "deepseek-ai/deepseek-v4-pro",
+    role: "法律草拟",
+    detail: "生成长模板、条款、附件、签署页和缺项标记。",
+    step: "Draft package",
   },
   {
     id: "browser",
     name: "Browser Agent",
-    model: "minimaxai/minimax-m2.7",
+    model: "nvidia/nemotron-3-super-120b-a12b",
     role: "检索核验",
-    detail: "对照公开来源、法规引用、本地 RAG 和 Obsidian 索引。",
+    detail: "对照本地 RAG、SQLite FTS5、引用依据和版本日期。",
     step: "Citation check",
   },
   {
     id: "reviewer",
     name: "Reviewer",
-    model: "google/gemma-3n-e2b-it",
-    role: "格式复核",
-    detail: "快速检查缺项、风险、格式和导出可读性。",
-    step: "Word export",
+    model: "openai/gpt-oss-120b",
+    role: "最终审核",
+    detail: "最终质量门：完整性、内部一致性、引用支持、版式和律师复核风险。",
+    step: "Quality gate",
   },
 ];
 
-const timeline = ["公司资料", "清单规划", "模板草拟", "引用核验", "Word 导出"];
+const timeline = ["需求录入", "结构规划", "法律草拟", "引用核验", "最终审核", "Word / Google Doc"];
 
 const marketplaceSkills = [
   {
@@ -154,6 +154,10 @@ const tokenSaved = document.querySelector("#tokenSaved");
 const progressValue = document.querySelector("#progressValue");
 const progressBar = document.querySelector("#progressBar");
 const briefInput = document.querySelector("#briefInput");
+const googleDocInput = document.querySelector("#googleDocInput");
+const googleDocCheckButton = document.querySelector("#googleDocCheckButton");
+const googleDocStatus = document.querySelector("#googleDocStatus");
+const generateLegalButton = document.querySelector("#generateLegalButton");
 const loginButton = document.querySelector("#loginButton");
 const loginPanel = document.querySelector("#loginPanel");
 const conversationEntry = document.querySelector("#conversationEntry");
@@ -212,6 +216,62 @@ function setProgress(value) {
   const clamped = Math.max(0, Math.min(100, value));
   progressValue.textContent = `${clamped}%`;
   progressBar.style.width = `${clamped}%`;
+}
+
+function extractGoogleDocIdFromUrl(value) {
+  const match = value.trim().match(/^https?:\/\/docs\.google\.com\/document\/d\/([A-Za-z0-9_-]+)/);
+  return match ? match[1] : "";
+}
+
+function setGoogleDocStatus(kind, message) {
+  googleDocStatus.classList.remove("is-ok", "is-warn", "is-error");
+  if (kind) {
+    googleDocStatus.classList.add(`is-${kind}`);
+  }
+  googleDocStatus.textContent = message;
+}
+
+function checkGoogleDocLink() {
+  const value = googleDocInput.value.trim();
+  if (!value) {
+    setGoogleDocStatus(
+      "warn",
+      "未提供 Google Doc。将先生成 Word；粘贴编辑链接后可自动排版 Google Doc。",
+    );
+    return true;
+  }
+
+  const documentId = extractGoogleDocIdFromUrl(value);
+  if (!documentId) {
+    setGoogleDocStatus("error", "请粘贴 docs.google.com/document/d/.../edit 格式的 Google Doc 链接。");
+    googleDocInput.focus();
+    return false;
+  }
+
+  setGoogleDocStatus(
+    "ok",
+    `链接格式正确。后端会校验 ${documentId} 是否具备 Editor 权限；无权限时会提示开放编辑权限。`,
+  );
+  return true;
+}
+
+function summarizeBrief() {
+  const firstContentLine = briefInput.value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find(Boolean);
+  if (!firstContentLine) {
+    return "法律文书生成任务";
+  }
+  return firstContentLine.length > 18 ? `${firstContentLine.slice(0, 18)}...` : firstContentLine;
+}
+
+function updateConversationTitle(title, subtitle) {
+  conversationRow.querySelector("strong").textContent = title;
+  historyItem.querySelector("strong").textContent = title;
+  if (subtitle) {
+    historyItem.querySelector("small").textContent = subtitle;
+  }
 }
 
 function renderSkills() {
@@ -414,24 +474,53 @@ document.querySelectorAll(".agent-node").forEach((node) => {
   });
 });
 
-runButton.addEventListener("click", () => {
+function prepareNewConversation() {
   window.clearInterval(runTimer);
   showOfficeView();
   restoreConversation();
   setConversationOpen(false);
+  officeStage.classList.remove("is-running");
+  runStatus.textContent = "待输入";
+  runningCount.textContent = "0";
+  doneCount.textContent = "0";
+  totalCount.textContent = "1";
+  activate("planner");
+  setProgress(6);
+  setGoogleDocStatus("warn", "请输入法律文书需求；如需写入 Google Doc，请先粘贴可编辑链接。");
+  briefInput.focus();
+}
+
+function startLegalDraftRun() {
+  window.clearInterval(runTimer);
+  showOfficeView();
+  restoreConversation();
+  setConversationOpen(false);
+
+  if (!briefInput.value.trim()) {
+    setGoogleDocStatus("error", "请先填写需要生成或填写的法律文书内容。");
+    briefInput.focus();
+    return;
+  }
+
+  if (!checkGoogleDocLink()) {
+    return;
+  }
+
+  updateConversationTitle(summarizeBrief(), "多 Agent 协作草拟中");
   officeStage.classList.add("is-running");
   runStatus.textContent = "进行中";
   runningCount.textContent = "1";
   doneCount.textContent = "0";
+  totalCount.textContent = "1";
 
   let step = 0;
-  let progress = 18;
+  let progress = 12;
   activate(agents[0].id);
   setProgress(progress);
 
   runTimer = window.setInterval(() => {
     step += 1;
-    progress += 20;
+    progress += 22;
     tokenUsed.textContent = String(Number(tokenUsed.textContent) + 8399);
     tokenSaved.textContent = String(Number(tokenSaved.textContent) + 1440);
     setProgress(progress);
@@ -451,12 +540,23 @@ runButton.addEventListener("click", () => {
     renderAgents();
     renderTimeline(timeline.length);
     setProgress(100);
+    updateConversationTitle(summarizeBrief(), "Reviewer 审核完成");
+    setGoogleDocStatus(
+      "ok",
+      "最终 Reviewer 已完成质量门。若 Google Doc 具备 Editor 权限，可继续自动调整法律文书版式。",
+    );
   }, 900);
-});
+}
+
+runButton.addEventListener("click", prepareNewConversation);
+generateLegalButton.addEventListener("click", startLegalDraftRun);
+googleDocCheckButton.addEventListener("click", checkGoogleDocLink);
+googleDocInput.addEventListener("change", checkGoogleDocLink);
 
 exportButton.addEventListener("click", () => {
   const payload = {
     brief: briefInput.value,
+    googleDocUrl: googleDocInput.value.trim(),
     activeAgent: activeAgent().name,
     agents: agents.map(({ id, model, role, step }) => ({ id, model, role, step })),
     exportedAt: new Date().toISOString(),

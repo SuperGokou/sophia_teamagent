@@ -7,9 +7,12 @@ from legal_doc_agent.agents import (
     DRAFTER_ROLE,
     PLANNER_ROLE,
     REASONER_ROLE,
+    REVIEWER_ROLE,
 )
+from legal_doc_agent.docx_writer import DocumentSection
 from legal_doc_agent.prompts import (
     REQUIRED_TEMPLATE_DOCUMENTS,
+    build_final_review_job,
     build_generation_jobs,
     messages_for_job,
 )
@@ -42,6 +45,21 @@ class PromptTests(unittest.TestCase):
         self.assertIn("SUPPLEMENTAL LEGAL KNOWLEDGE BASE CONTEXT", jobs[0].prompt)
         self.assertIn("15 U.S.C. 77a", jobs[0].prompt)
         self.assertIn("Do not invent citations", jobs[0].prompt)
+
+    def test_final_review_job_checks_generated_package(self) -> None:
+        job = build_final_review_job(
+            "SPEC",
+            "BRIEF",
+            [DocumentSection(title="Checklist", markdown="Company name: Example AI")],
+            knowledge_context="15 U.S.C. 77a",
+        )
+
+        self.assertEqual(job.job_id, "final_reviewer_quality_gate")
+        self.assertEqual(job.agent_role, REVIEWER_ROLE)
+        self.assertIn("Final Reviewer Quality Gate", job.prompt)
+        self.assertIn("Approval Status", job.prompt)
+        self.assertIn("Company name: Example AI", job.prompt)
+        self.assertIn("15 U.S.C. 77a", job.prompt)
 
 
 if __name__ == "__main__":

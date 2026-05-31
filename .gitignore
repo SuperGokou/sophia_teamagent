@@ -8,6 +8,9 @@ venv/
 .env
 .env.*
 !.env.example
+credentials/
+*.credentials.json
+*_token.json
 build/
 dist/
 *.egg-info/

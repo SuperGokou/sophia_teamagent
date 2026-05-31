@@ -35,6 +35,42 @@ For an offline smoke test without calling NVIDIA:
 python -m legal_doc_agent --dry-run --brief-file input/company_brief.md --out outputs/dry_run.docx
 ```
 
+The role-based flow always runs a final `reviewer` quality gate after planning,
+analysis, reasoning, and drafting. The reviewer writes
+`final_reviewer_quality_gate.md` and the same report is appended to the final
+Word document so the user can see blocking issues, required fixes, layout checks,
+and counsel-review notes before using the package.
+
+## Google Docs Editor Workflow
+
+Google Doc editing requires Google Docs and Drive credentials with access to the
+target document:
+
+```powershell
+python -m pip install -e ".[google]"
+```
+
+The formatter checks the Drive `canEdit` capability before making changes. If the
+link is not editable by the active credentials, the app must stop and ask the
+user to open Google Doc sharing and grant Editor permission. The app never tries
+to bypass sharing permissions.
+
+Check access:
+
+```powershell
+python -m legal_doc_agent google-doc check "https://docs.google.com/document/d/.../edit"
+```
+
+Apply the standard legal layout:
+
+```powershell
+python -m legal_doc_agent google-doc format "https://docs.google.com/document/d/.../edit"
+```
+
+When editor access is confirmed, the formatter can apply a standard legal layout:
+1 inch margins, Times New Roman 11 pt body text, 115% line spacing, and consistent
+paragraph spacing for legal-document readability.
+
 ## Legal Knowledge Base MVP
 
 The local legal knowledge base is a SQLite + FTS5 foundation for retrieval-augmented drafting. It is intentionally scoped as a first phase, not a claim that the app has already mirrored all U.S. law.
@@ -115,7 +151,7 @@ Default role routing:
 - `analyst`: `minimaxai/minimax-m2.7`, for optional-document analysis, risk tradeoffs, and benchmark-style synthesis.
 - `reasoner`: `nvidia/nemotron-3-super-120b-a12b`, for deep thinking on preparation materials, cross-document dependencies, and counsel-review risks.
 - `coder`: `qwen/qwen3-coder-480b-a35b-instruct`, reserved for future code/schema/automation tasks.
-- `reviewer`: `google/gemma-3n-e2b-it`, reserved for short sanity checks and lightweight review.
+- `reviewer`: `openai/gpt-oss-120b`, for the final legal quality gate, consistency checks, citation-support review, layout readiness, and counsel-review risk notes.
 
 Override any role with environment variables like:
 

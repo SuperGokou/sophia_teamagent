@@ -144,6 +144,33 @@
             <div class="office-plaque" aria-hidden="true"><span>Eternal Presence AI</span></div>
           </div>
         </section>
+
+        <section class="draft-console" aria-label="法律文书生成控制台">
+          <label class="draft-field draft-brief">
+            <span>法律文书需求</span>
+            <textarea id="briefInput" spellcheck="false">Company legal name:
+Delaware file number:
+Founder 1:
+Founder 2:
+Ownership: 50/50
+Business: AI agents, staffing automation, SaaS workflow products
+Special notes:</textarea>
+          </label>
+          <label class="draft-field">
+            <span>Google Doc 编辑链接</span>
+            <input id="googleDocInput" type="url" placeholder="https://docs.google.com/document/d/.../edit" />
+          </label>
+          <div class="draft-actions">
+            <button class="primary-action" type="button" id="generateLegalButton">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
+              多 Agent 生成
+            </button>
+            <button class="secondary-action" type="button" id="googleDocCheckButton">检查编辑权限</button>
+          </div>
+          <p class="doc-status" id="googleDocStatus" aria-live="polite">
+            可选：粘贴 Google Doc 链接。实际编辑前会校验 Editor 权限。
+          </p>
+        </section>
       </main>
 
       <aside class="inspector" aria-label="对话明细">
@@ -228,13 +255,6 @@
           <ol class="timeline" id="timeline"></ol>
         </section>
 
-        <textarea id="briefInput" spellcheck="false">Company legal name:
-Delaware file number:
-Founder 1:
-Founder 2:
-Ownership: 50/50
-Business: AI agents, staffing automation, SaaS workflow products
-Special notes:</textarea>
       </aside>
 
       <main class="automation-page" id="automationPage" hidden>

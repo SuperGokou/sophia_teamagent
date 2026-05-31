@@ -41,6 +41,7 @@ class HarnessTests(unittest.TestCase):
 
             self.assertTrue(result.output_path.exists())
             self.assertTrue((artifact_dir / "part_a_required_checklist.md").exists())
+            self.assertTrue((artifact_dir / "final_reviewer_quality_gate.md").exists())
             self.assertGreaterEqual(len(result.observations), 3)
             self.assertTrue(
                 any(
@@ -68,6 +69,7 @@ class HarnessTests(unittest.TestCase):
             self.assertIn("analyst", client.roles)
             self.assertIn("reasoner", client.roles)
             self.assertIn("drafter", client.roles)
+            self.assertIn("reviewer", client.roles)
 
 
 if __name__ == "__main__":

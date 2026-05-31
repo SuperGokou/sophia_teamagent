@@ -84,12 +84,15 @@ DEFAULT_AGENT_PROFILES: dict[str, AgentProfile] = {
     ),
     REVIEWER_ROLE: AgentProfile(
         role=REVIEWER_ROLE,
-        model="google/gemma-3n-e2b-it",
+        model="openai/gpt-oss-120b",
         temperature=0.2,
-        top_p=0.7,
-        max_tokens=512,
+        top_p=1.0,
+        max_tokens=4096,
         thinking=None,
-        purpose="Run short, cheap sanity checks and concise issue spotting.",
+        purpose=(
+            "Final legal quality gate for completeness, internal consistency, "
+            "citation support, formatting readiness, and counsel-review risks."
+        ),
     ),
 }
 
