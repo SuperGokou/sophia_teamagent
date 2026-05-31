@@ -12,6 +12,7 @@ from legal_doc_agent.nvidia import NvidiaClient
 PLANNER_ROLE = "planner"
 DRAFTER_ROLE = "drafter"
 ANALYST_ROLE = "analyst"
+REASONER_ROLE = "reasoner"
 CODER_ROLE = "coder"
 REVIEWER_ROLE = "reviewer"
 
@@ -27,6 +28,9 @@ class AgentProfile:
     max_tokens: int
     thinking: bool | None
     purpose: str
+    enable_thinking: bool | None = None
+    reasoning_budget: int | None = None
+    stream: bool = False
 
 
 DEFAULT_AGENT_PROFILES: dict[str, AgentProfile] = {
@@ -56,6 +60,18 @@ DEFAULT_AGENT_PROFILES: dict[str, AgentProfile] = {
         max_tokens=8192,
         thinking=None,
         purpose="Analyze optional documents, risk tradeoffs, and negotiation benchmarks.",
+    ),
+    REASONER_ROLE: AgentProfile(
+        role=REASONER_ROLE,
+        model="nvidia/nemotron-3-super-120b-a12b",
+        temperature=1.0,
+        top_p=0.95,
+        max_tokens=16384,
+        thinking=None,
+        purpose="Run deep reasoning on cross-document dependencies and counsel-review risks.",
+        enable_thinking=True,
+        reasoning_budget=16384,
+        stream=True,
     ),
     CODER_ROLE: AgentProfile(
         role=CODER_ROLE,
@@ -129,6 +145,9 @@ class NvidiaAgentRouter:
                 top_p=profile.top_p,
                 max_tokens=profile.max_tokens,
                 thinking=profile.thinking,
+                enable_thinking=profile.enable_thinking,
+                reasoning_budget=profile.reasoning_budget,
+                stream=profile.stream,
             )
         )
         return client.complete(messages)
@@ -144,6 +163,15 @@ def _profile_from_env(default: AgentProfile) -> AgentProfile:
         max_tokens=int(os.getenv(f"{prefix}MAX_TOKENS", str(default.max_tokens))),
         thinking=_parse_role_thinking(os.getenv(f"{prefix}THINKING"), default.thinking),
         purpose=os.getenv(f"{prefix}PURPOSE", default.purpose),
+        enable_thinking=_parse_role_thinking(
+            os.getenv(f"{prefix}ENABLE_THINKING"),
+            default.enable_thinking,
+        ),
+        reasoning_budget=_parse_optional_int(
+            os.getenv(f"{prefix}REASONING_BUDGET"),
+            default.reasoning_budget,
+        ),
+        stream=_parse_role_stream(os.getenv(f"{prefix}STREAM"), default.stream),
     )
 
 
@@ -156,3 +184,17 @@ def _parse_role_thinking(value: str | None, default: bool | None) -> bool | None
     if normalized in {"0", "false", "no", "n", "off"}:
         return False
     raise ConfigurationError(f"Invalid NVIDIA role thinking value: {value}")
+
+
+def _parse_optional_int(value: str | None, default: int | None) -> int | None:
+    if value is None or value == "":
+        return default
+    try:
+        return int(value)
+    except ValueError as exc:
+        raise ConfigurationError(f"Invalid NVIDIA role integer value: {value}") from exc
+
+
+def _parse_role_stream(value: str | None, default: bool) -> bool:
+    parsed = _parse_role_thinking(value, default)
+    return bool(parsed)

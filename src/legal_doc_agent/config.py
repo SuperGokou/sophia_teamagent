@@ -22,6 +22,9 @@ class NvidiaConfig:
     top_p: float = 1.0
     max_tokens: int = 4096
     thinking: bool | None = None
+    enable_thinking: bool | None = None
+    reasoning_budget: int | None = None
+    stream: bool = False
 
     @classmethod
     def from_env(
@@ -35,6 +38,9 @@ class NvidiaConfig:
         max_tokens: int | None = None,
         top_p: float | None = None,
         thinking: bool | None = None,
+        enable_thinking: bool | None = None,
+        reasoning_budget: int | None = None,
+        stream: bool | None = None,
     ) -> "NvidiaConfig":
         """Build configuration from explicit values first, then environment."""
 
@@ -56,7 +62,31 @@ class NvidiaConfig:
 
         thinking_value = thinking
         if thinking_value is None:
-            thinking_value = _parse_optional_bool(os.getenv("NVIDIA_THINKING"))
+            thinking_value = _parse_optional_bool(
+                os.getenv("NVIDIA_THINKING"),
+                "NVIDIA_THINKING",
+            )
+
+        enable_thinking_value = enable_thinking
+        if enable_thinking_value is None:
+            enable_thinking_value = _parse_optional_bool(
+                os.getenv("NVIDIA_ENABLE_THINKING"),
+                "NVIDIA_ENABLE_THINKING",
+            )
+
+        reasoning_budget_value = reasoning_budget
+        if reasoning_budget_value is None:
+            raw_reasoning_budget = os.getenv("NVIDIA_REASONING_BUDGET")
+            reasoning_budget_value = (
+                int(raw_reasoning_budget) if raw_reasoning_budget else None
+            )
+
+        stream_value = stream
+        if stream_value is None:
+            stream_value = (
+                _parse_optional_bool(os.getenv("NVIDIA_STREAM"), "NVIDIA_STREAM")
+                or False
+            )
 
         return cls(
             api_key=api_key or os.getenv("NVIDIA_API_KEY"),
@@ -67,6 +97,9 @@ class NvidiaConfig:
             top_p=top_p_value,
             max_tokens=max_tokens_value,
             thinking=thinking_value,
+            enable_thinking=enable_thinking_value,
+            reasoning_budget=reasoning_budget_value,
+            stream=stream_value,
         )
 
     def require_api_key(self) -> str:
@@ -87,6 +120,9 @@ class NvidiaConfig:
         top_p: float | None = None,
         max_tokens: int | None = None,
         thinking: bool | None = None,
+        enable_thinking: bool | None = None,
+        reasoning_budget: int | None = None,
+        stream: bool | None = None,
     ) -> "NvidiaConfig":
         """Return a role-specific config while preserving shared auth settings."""
 
@@ -99,10 +135,17 @@ class NvidiaConfig:
             top_p=self.top_p if top_p is None else top_p,
             max_tokens=self.max_tokens if max_tokens is None else max_tokens,
             thinking=self.thinking if thinking is None else thinking,
+            enable_thinking=(
+                self.enable_thinking if enable_thinking is None else enable_thinking
+            ),
+            reasoning_budget=(
+                self.reasoning_budget if reasoning_budget is None else reasoning_budget
+            ),
+            stream=self.stream if stream is None else stream,
         )
 
 
-def _parse_optional_bool(value: str | None) -> bool | None:
+def _parse_optional_bool(value: str | None, name: str) -> bool | None:
     if value is None or value == "":
         return None
     normalized = value.strip().lower()
@@ -110,4 +153,4 @@ def _parse_optional_bool(value: str | None) -> bool | None:
         return True
     if normalized in {"0", "false", "no", "n", "off"}:
         return False
-    raise ConfigurationError(f"Invalid boolean value for NVIDIA_THINKING: {value}")
+    raise ConfigurationError(f"Invalid boolean value for {name}: {value}")

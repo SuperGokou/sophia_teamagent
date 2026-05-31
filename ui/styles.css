@@ -338,6 +338,7 @@ svg {
   border: 0;
   background: transparent;
   transform: translate(-50%, -50%);
+  z-index: 2;
 }
 
 .agent-node::after {
@@ -770,6 +771,12 @@ button:focus-visible {
     --y: 47% !important;
   }
 
+  .agent-node.reasoner {
+    --x: 82% !important;
+    --y: 72% !important;
+    z-index: 4;
+  }
+
   .agent-node.coder {
     --x: 34% !important;
     --y: 69% !important;
@@ -781,8 +788,8 @@ button:focus-visible {
   }
 
   .agent-node.drafter {
-    --x: 69% !important;
-    --y: 76% !important;
+    --x: 60% !important;
+    --y: 82% !important;
   }
 
   .agent-label {

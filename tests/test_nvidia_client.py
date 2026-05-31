@@ -65,6 +65,46 @@ class NvidiaClientTests(unittest.TestCase):
         payload = json.loads(request.data.decode("utf-8"))
         self.assertEqual(payload["chat_template_kwargs"], {"thinking": False})
 
+    @patch("urllib.request.urlopen")
+    def test_can_parse_streaming_content_with_reasoning_options(
+        self,
+        urlopen: Mock,
+    ) -> None:
+        response = Mock()
+        response.read.return_value = (
+            'data: {"choices":[{"delta":{"reasoning_content":"thinking"}}]}\n\n'
+            'data: {"choices":[{"delta":{"content":"draft "}}]}\n\n'
+            'data: {"choices":[{"delta":{"content":"done"}}]}\n\n'
+            "data: [DONE]\n\n"
+        ).encode("utf-8")
+        response.__enter__ = Mock(return_value=response)
+        response.__exit__ = Mock(return_value=False)
+        urlopen.return_value = response
+        client = NvidiaClient(
+            NvidiaConfig(
+                api_key="key",
+                model="nvidia/nemotron-3-super-120b-a12b",
+                max_tokens=16384,
+                top_p=0.95,
+                enable_thinking=True,
+                reasoning_budget=16384,
+                stream=True,
+            )
+        )
+
+        content = client.complete([{"role": "user", "content": "hello"}])
+
+        self.assertEqual(content, "draft done")
+        request = urlopen.call_args.args[0]
+        payload = json.loads(request.data.decode("utf-8"))
+        self.assertEqual(payload["model"], "nvidia/nemotron-3-super-120b-a12b")
+        self.assertTrue(payload["stream"])
+        self.assertEqual(payload["top_p"], 0.95)
+        self.assertEqual(payload["max_tokens"], 16384)
+        self.assertEqual(payload["chat_template_kwargs"], {"enable_thinking": True})
+        self.assertEqual(payload["reasoning_budget"], 16384)
+        self.assertEqual(request.headers["Accept"], "text/event-stream")
+
 
 if __name__ == "__main__":
     unittest.main()

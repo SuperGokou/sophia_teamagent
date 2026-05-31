@@ -59,6 +59,7 @@ class HarnessTests(unittest.TestCase):
 
             self.assertIn("planner", client.roles)
             self.assertIn("analyst", client.roles)
+            self.assertIn("reasoner", client.roles)
             self.assertIn("drafter", client.roles)
 
 

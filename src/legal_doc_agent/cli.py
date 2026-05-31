@@ -36,6 +36,9 @@ def main(argv: list[str] | None = None) -> int:
                     top_p=args.top_p,
                     max_tokens=args.max_tokens,
                     thinking=args.thinking,
+                    enable_thinking=args.enable_thinking,
+                    reasoning_budget=args.reasoning_budget,
+                    stream=args.stream,
                 )
             )
         else:
@@ -79,6 +82,23 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Enable or disable NVIDIA chat_template_kwargs.thinking.",
     )
     parser.add_argument(
+        "--enable-thinking",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Enable or disable NVIDIA chat_template_kwargs.enable_thinking.",
+    )
+    parser.add_argument(
+        "--reasoning-budget",
+        type=int,
+        help="Single-agent NVIDIA reasoning_budget value.",
+    )
+    parser.add_argument(
+        "--stream",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Request streaming completions and collect streamed content.",
+    )
+    parser.add_argument(
         "--single-agent",
         action="store_true",
         help="Use one NVIDIA model for every job instead of role-based routing.",
@@ -114,9 +134,19 @@ def _load_brief(args: argparse.Namespace) -> str:
 def _print_agent_profiles() -> None:
     for role, profile in load_agent_profiles_from_env().items():
         thinking = "unset" if profile.thinking is None else str(profile.thinking).lower()
+        enable_thinking = (
+            "unset"
+            if profile.enable_thinking is None
+            else str(profile.enable_thinking).lower()
+        )
+        reasoning_budget = (
+            "unset" if profile.reasoning_budget is None else str(profile.reasoning_budget)
+        )
         print(
             f"{role}: model={profile.model}, temperature={profile.temperature}, "
-            f"top_p={profile.top_p}, max_tokens={profile.max_tokens}, thinking={thinking}"
+            f"top_p={profile.top_p}, max_tokens={profile.max_tokens}, "
+            f"thinking={thinking}, enable_thinking={enable_thinking}, "
+            f"reasoning_budget={reasoning_budget}, stream={str(profile.stream).lower()}"
         )
 
 

@@ -28,6 +28,13 @@ const agents = [
     detail: "比较可选文件、合同风险、谈判取舍和市场标准。",
   },
   {
+    id: "reasoner",
+    name: "Reasoner",
+    model: "nvidia/nemotron-3-super-120b-a12b",
+    role: "深度推理",
+    detail: "启用 thinking 预算，分析跨文档依赖和复核风险。",
+  },
+  {
     id: "reviewer",
     name: "Reviewer",
     model: "google/gemma-3n-e2b-it",
@@ -111,7 +118,7 @@ runButton.addEventListener("click", () => {
   runStatus.textContent = "运行中";
   let progress = 18;
   let step = 1;
-  const sequence = ["planner", "analyst", "drafter", "coder", "reviewer"];
+  const sequence = ["planner", "analyst", "reasoner", "drafter", "coder", "reviewer"];
   const interval = window.setInterval(() => {
     progress += 14;
     step += 1;

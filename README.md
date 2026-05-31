@@ -61,6 +61,9 @@ Environment variables:
 - `NVIDIA_TOP_P`: defaults to `1`.
 - `NVIDIA_MAX_TOKENS`: defaults to `4096`.
 - `NVIDIA_THINKING`: optional. When unset, no `chat_template_kwargs` is sent. Set `false` for models that support `chat_template_kwargs.thinking=false`.
+- `NVIDIA_ENABLE_THINKING`: optional. Sends `chat_template_kwargs.enable_thinking` for models such as Nemotron.
+- `NVIDIA_REASONING_BUDGET`: optional provider reasoning budget.
+- `NVIDIA_STREAM`: optional. Set `true` to request streaming completions and collect streamed content.
 - `NVIDIA_TIMEOUT`: defaults to `120`.
 
 Single-agent CLI options override the single-agent values above.
@@ -72,6 +75,7 @@ Default role routing:
 - `planner`: `openai/gpt-oss-120b`, for checklists, structure, and package planning.
 - `drafter`: `deepseek-ai/deepseek-v4-pro`, for long legal templates and clause-heavy drafting.
 - `analyst`: `minimaxai/minimax-m2.7`, for optional-document analysis, risk tradeoffs, and benchmark-style synthesis.
+- `reasoner`: `nvidia/nemotron-3-super-120b-a12b`, for deep thinking on preparation materials, cross-document dependencies, and counsel-review risks.
 - `coder`: `qwen/qwen3-coder-480b-a35b-instruct`, reserved for future code/schema/automation tasks.
 - `reviewer`: `google/gemma-3n-e2b-it`, reserved for short sanity checks and lightweight review.
 
@@ -81,6 +85,10 @@ Override any role with environment variables like:
 $env:NVIDIA_PLANNER_MODEL = "openai/gpt-oss-120b"
 $env:NVIDIA_DRAFTER_MODEL = "deepseek-ai/deepseek-v4-pro"
 $env:NVIDIA_ANALYST_MODEL = "minimaxai/minimax-m2.7"
+$env:NVIDIA_REASONER_MODEL = "nvidia/nemotron-3-super-120b-a12b"
+$env:NVIDIA_REASONER_ENABLE_THINKING = "true"
+$env:NVIDIA_REASONER_REASONING_BUDGET = "16384"
+$env:NVIDIA_REASONER_STREAM = "true"
 $env:NVIDIA_DRAFTER_THINKING = "false"
 ```
 
