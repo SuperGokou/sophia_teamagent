@@ -2137,8 +2137,8 @@ textarea:focus-visible {
   }
 
   .agent-node.browser {
-    --x: 51% !important;
-    --y: 55% !important;
+    --x: 61% !important;
+    --y: 39% !important;
   }
 
   .inspector {
