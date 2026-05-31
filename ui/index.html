@@ -43,20 +43,20 @@
           </button>
         </nav>
 
-        <div class="sidebar-section">
-          <span>知识库</span>
+        <section class="sidebar-section">
+          <span>本地知识库</span>
           <button class="side-link" type="button">Delaware C-Corp</button>
           <button class="side-link" type="button">AI SaaS 条款库</button>
           <button class="side-link" type="button">Founder Equity</button>
-        </div>
+        </section>
 
-        <div class="sidebar-section">
+        <section class="sidebar-section">
           <span>最近对话</span>
           <button class="history-item" type="button">
             <strong>Post-formation package</strong>
             <small>多 Agent 协作草拟中</small>
           </button>
-        </div>
+        </section>
 
         <div class="profile">
           <div class="avatar">G</div>
@@ -72,8 +72,8 @@
           <button class="icon-button" type="button" aria-label="收起侧栏">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h16" /></svg>
           </button>
-          <div>
-            <p>Marvis办公室</p>
+          <div class="title-stack">
+            <p>协作办公室</p>
             <h1>Sophia 法务文档工作台</h1>
           </div>
           <div class="topbar-actions">
@@ -88,40 +88,79 @@
           </div>
         </header>
 
-        <section class="office-stage" aria-label="Agent 协作画布">
+        <section class="office-stage" id="officeStage" aria-label="Agent 协作画布">
           <img class="office-map" src="./assets/workstation@2x.webp" alt="" />
+
           <div class="stage-title">
-            <span>LIVE ROUTING</span>
-            <strong id="activeAgentTitle">planner 正在整理文档结构</strong>
+            <span id="stageEyebrow">LIVE ROUTING</span>
+            <strong id="activeAgentTitle">Planner 正在整理文档结构</strong>
           </div>
 
-          <button class="agent-node planner is-selected" type="button" data-agent="planner" style="--x: 52%; --y: 32%">
+          <svg class="route-network" viewBox="0 0 100 100" aria-hidden="true">
+            <path id="routePathA" d="M53 33 C58 38 63 40 70 42" />
+            <path id="routePathB" d="M70 42 C65 48 57 50 50 50" />
+            <path id="routePathC" d="M50 50 C46 58 43 64 40 68" />
+            <path id="routePathD" d="M50 50 C55 62 60 72 59 78" />
+            <path id="routePathE" d="M59 78 C65 76 73 72 78 68" />
+            <circle r="0.9">
+              <animateMotion dur="4.2s" repeatCount="indefinite" path="M53 33 C58 38 63 40 70 42 C65 48 57 50 50 50 C46 58 43 64 40 68" />
+            </circle>
+            <circle r="0.75">
+              <animateMotion dur="5.4s" begin="0.9s" repeatCount="indefinite" path="M50 50 C55 62 60 72 59 78 C65 76 73 72 78 68" />
+            </circle>
+          </svg>
+
+          <button class="agent-node planner is-selected" type="button" data-agent="planner" style="--x: 53%; --y: 34%">
             <span class="agent-label">Planner</span>
+            <span class="agent-seat"></span>
             <span class="agent-sprite sprite-standby"></span>
+            <span class="agent-status">结构规划</span>
           </button>
-          <button class="agent-node drafter" type="button" data-agent="drafter" style="--x: 59%; --y: 76%">
-            <span class="agent-label">Drafter</span>
-            <span class="agent-sprite sprite-working"></span>
+          <button class="agent-node reviewer" type="button" data-agent="reviewer" style="--x: 70%; --y: 43%">
+            <span class="agent-label">Reviewer</span>
+            <span class="agent-seat"></span>
+            <span class="agent-sprite sprite-standby"></span>
+            <span class="agent-status">复核</span>
           </button>
-          <button class="agent-node coder" type="button" data-agent="coder" style="--x: 40%; --y: 66%">
-            <span class="agent-label">Coder</span>
-            <span class="agent-sprite sprite-salute"></span>
-          </button>
-          <button class="agent-node analyst" type="button" data-agent="analyst" style="--x: 50%; --y: 50%">
+          <button class="agent-node analyst" type="button" data-agent="analyst" style="--x: 51%; --y: 52%">
             <span class="agent-label">Analyst</span>
+            <span class="agent-seat"></span>
             <span class="agent-sprite sprite-working"></span>
+            <span class="agent-status">风险分析</span>
+          </button>
+          <button class="agent-node coder" type="button" data-agent="coder" style="--x: 40%; --y: 68%">
+            <span class="agent-label">Coder</span>
+            <span class="agent-seat"></span>
+            <span class="agent-sprite sprite-salute"></span>
+            <span class="agent-status">自动化</span>
+          </button>
+          <button class="agent-node drafter" type="button" data-agent="drafter" style="--x: 59%; --y: 78%">
+            <span class="agent-label">Drafter</span>
+            <span class="agent-seat"></span>
+            <span class="agent-sprite sprite-working"></span>
+            <span class="agent-status">法律草拟</span>
           </button>
           <button class="agent-node reasoner" type="button" data-agent="reasoner" style="--x: 78%; --y: 68%">
             <span class="agent-label">Reasoner</span>
+            <span class="agent-seat"></span>
             <span class="agent-sprite sprite-salute"></span>
-          </button>
-          <button class="agent-node reviewer" type="button" data-agent="reviewer" style="--x: 70%; --y: 42%">
-            <span class="agent-label">Reviewer</span>
-            <span class="agent-sprite sprite-standby"></span>
+            <span class="agent-status">深度推理</span>
           </button>
 
-          <div class="route-line route-a"></div>
-          <div class="route-line route-b"></div>
+          <div class="handoff-strip" aria-label="当前协作状态">
+            <div>
+              <span>当前步骤</span>
+              <strong id="currentStep">Required checklist</strong>
+            </div>
+            <div>
+              <span>下一个 Agent</span>
+              <strong id="nextAgent">Analyst</strong>
+            </div>
+            <div>
+              <span>引用策略</span>
+              <strong>RAG + cite check</strong>
+            </div>
+          </div>
         </section>
 
         <section class="brief-panel">
@@ -160,7 +199,7 @@ Special notes:</textarea>
           </div>
         </section>
 
-        <section class="inspector-block">
+        <section class="inspector-block agent-queue">
           <div class="panel-heading compact">
             <div>
               <p>Agent 队列</p>
@@ -171,7 +210,7 @@ Special notes:</textarea>
           <div class="agent-list" id="agentList"></div>
         </section>
 
-        <section class="inspector-block">
+        <section class="inspector-block progress-block">
           <div class="panel-heading compact">
             <div>
               <p>文档进度</p>
