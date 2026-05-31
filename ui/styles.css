@@ -89,14 +89,14 @@ svg {
 
 .brand strong {
   display: block;
-  font-size: 36px;
+  font-size: 30px;
   line-height: 0.95;
   font-weight: 900;
 }
 
 .brand span {
   color: var(--muted);
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -128,7 +128,7 @@ svg {
   outline: 0;
   color: var(--ink);
   background: transparent;
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .nav-stack,
@@ -154,7 +154,7 @@ svg {
   align-items: center;
   gap: 14px;
   padding: 0 8px;
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 650;
 }
 
@@ -170,7 +170,7 @@ svg {
 
 .sidebar-section > span {
   color: var(--muted);
-  font-size: 15px;
+  font-size: 13px;
 }
 
 .library-item {
@@ -189,7 +189,7 @@ svg {
   gap: 12px;
   padding: 0 14px;
   border-radius: var(--radius);
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 750;
 }
 
@@ -208,12 +208,12 @@ svg {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 18px;
+  font-size: 15px;
 }
 
 .history-item small {
   color: var(--muted);
-  font-size: 16px;
+  font-size: 13px;
 }
 
 .profile {
@@ -238,7 +238,7 @@ svg {
 }
 
 .profile strong {
-  font-size: 18px;
+  font-size: 15px;
 }
 
 .phone-button {
@@ -268,7 +268,7 @@ svg {
 
 .office-title h1 {
   margin: 0;
-  font-size: 30px;
+  font-size: 25px;
   line-height: 1;
   font-weight: 900;
   text-shadow: 0 3px 0 rgba(255, 255, 255, 0.7);
@@ -308,7 +308,7 @@ svg {
   border-radius: 4px;
   background: rgba(255, 245, 205, 0.9);
   box-shadow: 0 4px 0 rgba(95, 58, 42, 0.18);
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 900;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
 }
@@ -371,7 +371,7 @@ svg {
   color: #3f261c;
   background: rgba(255, 242, 203, 0.95);
   box-shadow: 0 4px 0 rgba(95, 58, 42, 0.18);
-  font-size: 15px;
+  font-size: 12px;
   font-weight: 900;
   line-height: 1.15;
   white-space: nowrap;
@@ -532,7 +532,7 @@ svg {
 .progress-panel span {
   display: block;
   color: var(--muted);
-  font-size: 16px;
+  font-size: 13px;
 }
 
 .metrics strong {
@@ -545,13 +545,13 @@ svg {
 }
 
 .metrics b {
-  font-size: 28px;
+  font-size: 23px;
   line-height: 1;
 }
 
 .metrics em {
   color: #b9bbbf;
-  font-size: 28px;
+  font-size: 23px;
   font-style: normal;
 }
 
@@ -559,7 +559,7 @@ svg {
   display: block;
   margin-top: 14px;
   color: var(--muted);
-  font-size: 16px;
+  font-size: 13px;
 }
 
 .detail-panel,
@@ -579,7 +579,7 @@ svg {
   border: 0;
   background: transparent;
   color: #1c1d1f;
-  font-size: 16px;
+  font-size: 13px;
 }
 
 .count-strip {
@@ -603,13 +603,13 @@ svg {
 }
 
 .count-strip strong {
-  font-size: 26px;
+  font-size: 22px;
   line-height: 1;
 }
 
 .count-strip span {
   color: var(--muted);
-  font-size: 15px;
+  font-size: 13px;
 }
 
 .conversation-row {
@@ -628,20 +628,20 @@ svg {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 20px;
+  font-size: 17px;
 }
 
 .conversation-row span {
   display: block;
   margin-top: 8px;
   color: var(--muted);
-  font-size: 16px;
+  font-size: 13px;
 }
 
 .conversation-row em {
   display: block;
   color: var(--muted);
-  font-size: 17px;
+  font-size: 14px;
   font-style: normal;
   text-align: right;
 }
@@ -650,7 +650,7 @@ svg {
   margin: 42px 0 0;
   color: var(--muted);
   text-align: center;
-  font-size: 18px;
+  font-size: 15px;
 }
 
 .agent-detail {
@@ -680,20 +680,20 @@ svg {
 }
 
 .agent-card strong {
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .agent-card div span,
 .agent-card em {
   color: var(--muted);
-  font-size: 14px;
+  font-size: 12px;
   font-style: normal;
 }
 
 .agent-card p {
   margin: 0;
   color: #7a7f85;
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1.45;
 }
 
@@ -828,7 +828,7 @@ textarea:focus-visible {
   }
 
   .brand strong {
-    font-size: 30px;
+    font-size: 27px;
   }
 
   .inspector {
@@ -879,7 +879,7 @@ textarea:focus-visible {
   }
 
   .brand strong {
-    font-size: 30px;
+    font-size: 27px;
   }
 
   .nav-stack {
@@ -914,7 +914,7 @@ textarea:focus-visible {
   }
 
   .office-title h1 {
-    font-size: 25px;
+    font-size: 22px;
   }
 
   .office-map {
@@ -933,7 +933,7 @@ textarea:focus-visible {
   }
 
   .agent-label {
-    font-size: 13px;
+    font-size: 11px;
   }
 
   .agent-sprite {
