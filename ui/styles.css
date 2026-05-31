@@ -84,9 +84,9 @@ svg {
 }
 
 .brand-mark {
-  width: 46px;
-  height: 46px;
-  border-radius: 10px;
+  width: 56px;
+  height: 56px;
+  border-radius: 13px;
   display: block;
   padding: 2px;
   object-fit: contain;
