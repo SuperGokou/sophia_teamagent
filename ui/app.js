@@ -4,116 +4,77 @@ const agents = [
     name: "Planner",
     model: "openai/gpt-oss-120b",
     role: "结构规划",
-    detail: "拆分任务、整理清单、控制输出顺序。",
+    detail: "拆分需求、列出文件清单、控制多模型输出顺序。",
     step: "Required checklist",
   },
   {
-    id: "analyst",
-    name: "Analyst",
-    model: "minimaxai/minimax-m2.7",
-    role: "风险分析",
-    detail: "比较可选文件、合同风险、谈判取舍和市场标准。",
-    step: "Optional checklist",
-  },
-  {
-    id: "reasoner",
-    name: "Reasoner",
-    model: "nvidia/nemotron-3-super-120b-a12b",
-    role: "深度推理",
-    detail: "启用 thinking 预算，分析跨文档依赖和复核风险。",
-    step: "Preparation materials",
-  },
-  {
-    id: "drafter",
-    name: "Drafter",
-    model: "deepseek-ai/deepseek-v4-pro",
-    role: "法律草拟",
-    detail: "生成长模板、条款、附件和签署页。",
-    step: "Required templates",
-  },
-  {
-    id: "coder",
-    name: "Coder",
+    id: "file",
+    name: "File Agent",
     model: "qwen/qwen3-coder-480b-a35b-instruct",
-    role: "自动化",
-    detail: "保留给 schema、脚本、集成和批处理。",
+    role: "文件装配",
+    detail: "管理模板、DOCX 结构、附件和批量生成脚本。",
     step: "DOCX assembly",
+  },
+  {
+    id: "browser",
+    name: "Browser Agent",
+    model: "minimaxai/minimax-m2.7",
+    role: "检索核验",
+    detail: "对照公开来源、法规引用、本地 RAG 和 Obsidian 索引。",
+    step: "Citation check",
   },
   {
     id: "reviewer",
     name: "Reviewer",
     model: "google/gemma-3n-e2b-it",
-    role: "复核",
-    detail: "快速检查缺项、风险和格式问题。",
+    role: "格式复核",
+    detail: "快速检查缺项、风险、格式和导出可读性。",
     step: "Word export",
   },
 ];
 
-const timeline = [
-  "公司资料",
-  "Required checklist",
-  "Optional checklist",
-  "Preparation materials",
-  "Required templates",
-  "Word export",
-];
+const timeline = ["公司资料", "清单规划", "模板草拟", "引用核验", "Word 导出"];
 
 const agentList = document.querySelector("#agentList");
 const timelineList = document.querySelector("#timeline");
-const activeAgentTitle = document.querySelector("#activeAgentTitle");
-const currentStep = document.querySelector("#currentStep");
-const nextAgent = document.querySelector("#nextAgent");
+const officeStage = document.querySelector("#officeStage");
 const runButton = document.querySelector("#runButton");
 const exportButton = document.querySelector("#exportButton");
 const runStatus = document.querySelector("#runStatus");
+const runningCount = document.querySelector("#runningCount");
+const doneCount = document.querySelector("#doneCount");
 const tokenUsed = document.querySelector("#tokenUsed");
 const tokenSaved = document.querySelector("#tokenSaved");
 const progressValue = document.querySelector("#progressValue");
-const progressCircle = document.querySelector("#progressCircle");
+const progressBar = document.querySelector("#progressBar");
 const briefInput = document.querySelector("#briefInput");
-const officeStage = document.querySelector("#officeStage");
 
 let activeIndex = 0;
-let runInterval;
+let runTimer;
 
-function activateAgent(agentId) {
-  const index = agents.findIndex((agent) => agent.id === agentId);
-  activeIndex = index < 0 ? 0 : index;
-  const current = agents[activeIndex];
-  const upcoming = agents[Math.min(activeIndex + 1, agents.length - 1)];
+function activeAgent() {
+  return agents[activeIndex] || agents[0];
+}
 
-  document.querySelectorAll(".agent-node").forEach((node) => {
-    const nodeIndex = agents.findIndex((agent) => agent.id === node.dataset.agent);
-    node.classList.toggle("is-selected", node.dataset.agent === current.id);
-    node.classList.toggle("is-done", nodeIndex >= 0 && nodeIndex < activeIndex);
-    node.classList.toggle("is-waiting", nodeIndex > activeIndex);
-  });
-
-  officeStage.dataset.active = current.id;
-  activeAgentTitle.textContent = `${current.name} 正在处理 ${current.role}`;
-  currentStep.textContent = current.step;
-  nextAgent.textContent = upcoming.id === current.id ? "Reviewer" : upcoming.name;
-  renderAgents();
-  renderTimeline(activeIndex + 1);
+function setProgress(value) {
+  const clamped = Math.max(0, Math.min(100, value));
+  progressValue.textContent = `${clamped}%`;
+  progressBar.style.width = `${clamped}%`;
 }
 
 function renderAgents() {
   agentList.innerHTML = agents
     .map((agent, index) => {
-      const state =
-        index < activeIndex ? "已完成" : index === activeIndex ? "进行中" : "等待";
+      const state = index < activeIndex ? "已完成" : index === activeIndex ? "进行中" : "等待";
       return `
-        <article class="agent-card ${index === activeIndex ? "is-active" : ""}">
+        <article class="agent-card ${index === activeIndex ? "is-current" : ""}">
           <div>
             <strong>${agent.name}</strong>
-            <small>${agent.model}</small>
+            <span>${agent.role}</span>
           </div>
-          <span>${agent.role}</span>
+          <small>${agent.model}</small>
           <p>${agent.detail}</p>
-          <div class="agent-card-footer">
-            <em>${state}</em>
-            <b style="--fill:${index < activeIndex ? 100 : index === activeIndex ? 62 : 8}%"></b>
-          </div>
+          <em>${state}</em>
         </article>
       `;
     })
@@ -123,71 +84,80 @@ function renderAgents() {
 function renderTimeline(progressIndex = 1) {
   timelineList.innerHTML = timeline
     .map((label, index) => {
-      const state =
-        index < progressIndex ? "is-done" : index === progressIndex ? "is-active" : "";
-      const note = index < progressIndex ? "完成" : index === progressIndex ? "进行中" : "等待";
-      return `<li class="${state}"><i></i><strong>${label}</strong><span>${note}</span></li>`;
+      const state = index < progressIndex ? "is-done" : index === progressIndex ? "is-active" : "";
+      return `<li class="${state}"><i></i><span>${label}</span></li>`;
     })
     .join("");
 }
 
-function setProgress(value) {
-  const clamped = Math.max(0, Math.min(100, value));
-  progressValue.textContent = `${clamped}%`;
-  progressCircle.style.strokeDashoffset = `${314 - (314 * clamped) / 100}`;
+function activate(agentId) {
+  const index = agents.findIndex((agent) => agent.id === agentId);
+  activeIndex = index < 0 ? 0 : index;
+  const current = activeAgent();
+
+  document.querySelectorAll(".agent-node").forEach((node) => {
+    const nodeIndex = agents.findIndex((agent) => agent.id === node.dataset.agent);
+    node.classList.toggle("is-active", node.dataset.agent === current.id);
+    node.classList.toggle("is-done", nodeIndex >= 0 && nodeIndex < activeIndex);
+    node.classList.toggle("is-idle", nodeIndex > activeIndex);
+  });
+
+  officeStage.dataset.active = current.id;
+  renderAgents();
+  renderTimeline(Math.min(activeIndex + 1, timeline.length - 1));
 }
 
 document.querySelectorAll(".agent-node").forEach((node) => {
   node.addEventListener("click", () => {
-    window.clearInterval(runInterval);
-    runStatus.textContent = "查看中";
+    window.clearInterval(runTimer);
     officeStage.classList.remove("is-running");
-    activateAgent(node.dataset.agent);
-    setProgress(18 + activeIndex * 14);
-  });
-});
-
-document.querySelectorAll(".segmented button").forEach((button) => {
-  button.addEventListener("click", () => {
-    document.querySelectorAll(".segmented button").forEach((item) => {
-      item.classList.toggle("is-active", item === button);
-    });
+    runStatus.textContent = "查看中";
+    runningCount.textContent = "0";
+    activate(node.dataset.agent);
+    setProgress(18 + activeIndex * 18);
   });
 });
 
 runButton.addEventListener("click", () => {
-  window.clearInterval(runInterval);
-  runStatus.textContent = "运行中";
+  window.clearInterval(runTimer);
   officeStage.classList.add("is-running");
-  let progress = 18;
-  let step = 0;
-  activateAgent(agents[step].id);
+  runStatus.textContent = "进行中";
+  runningCount.textContent = "1";
+  doneCount.textContent = "0";
 
-  runInterval = window.setInterval(() => {
+  let step = 0;
+  let progress = 18;
+  activate(agents[0].id);
+  setProgress(progress);
+
+  runTimer = window.setInterval(() => {
     step += 1;
-    progress += step === agents.length ? 12 : 14;
-    tokenUsed.textContent = String(Number(tokenUsed.textContent) + 4218);
-    tokenSaved.textContent = String(Number(tokenSaved.textContent) + 620);
+    progress += 20;
+    tokenUsed.textContent = String(Number(tokenUsed.textContent) + 8399);
+    tokenSaved.textContent = String(Number(tokenSaved.textContent) + 1440);
     setProgress(progress);
 
     if (step < agents.length) {
-      activateAgent(agents[step].id);
+      activate(agents[step].id);
       return;
     }
 
-    window.clearInterval(runInterval);
+    window.clearInterval(runTimer);
     officeStage.classList.remove("is-running");
-    runStatus.textContent = "完成";
+    runStatus.textContent = "已完成";
+    runningCount.textContent = "0";
+    doneCount.textContent = "1";
     activeIndex = agents.length - 1;
     renderAgents();
     renderTimeline(timeline.length);
     setProgress(100);
-  }, 780);
+  }, 900);
 });
 
 exportButton.addEventListener("click", () => {
   const payload = {
     brief: briefInput.value,
+    activeAgent: activeAgent().name,
     agents: agents.map(({ id, model, role, step }) => ({ id, model, role, step })),
     exportedAt: new Date().toISOString(),
   };
@@ -201,5 +171,5 @@ exportButton.addEventListener("click", () => {
   URL.revokeObjectURL(link.href);
 });
 
-activateAgent("planner");
+activate("planner");
 setProgress(18);
