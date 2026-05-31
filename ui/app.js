@@ -228,6 +228,7 @@ const automationFrequencies = {
   workday: "工作日",
   manual: "仅手动",
 };
+const tokenNumberFormatter = new Intl.NumberFormat("en-US");
 
 function todayKey() {
   const now = new Date();
@@ -295,7 +296,7 @@ function writeCurrentRunTokens(tokens) {
 }
 
 function formatTokenCount(value) {
-  return String(Math.max(0, Math.round(value)));
+  return tokenNumberFormatter.format(Math.max(0, Math.round(value)));
 }
 
 function updateTokenDisplay(ledger = readTokenLedger()) {
@@ -307,7 +308,7 @@ function updateTokenDisplay(ledger = readTokenLedger()) {
   tokenUsed.closest("article").style.setProperty("--token-progress", `${usedPercent}%`);
   const savedProgress = ledger.used ? Math.min(100, Math.round((ledger.saved / ledger.used) * 100)) : 0;
   tokenSaved.closest("article").style.setProperty("--token-progress", `${savedProgress}%`);
-  tokenUsedNote.textContent = `${ledger.entries.length} 条记录 · 今日累计`;
+  tokenUsedNote.textContent = `${ledger.entries.length} 条记录 · 今日累计 Token`;
   tokenSavedNote.textContent = savedProgress
     ? `缓存与本地复用节省 ${savedProgress}%`
     : "缓存与本地复用节省";
