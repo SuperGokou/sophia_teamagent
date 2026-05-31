@@ -1154,7 +1154,8 @@ svg {
 .metrics article {
   min-width: 0;
   display: grid;
-  grid-template-rows: 16px 64px auto;
+  grid-template-rows: auto auto auto;
+  row-gap: 9px;
   align-content: start;
 }
 
@@ -1170,31 +1171,34 @@ svg {
 .metrics strong {
   display: flex;
   align-items: baseline;
-  gap: 6px;
-  height: 64px;
+  gap: 4px;
+  height: 54px;
   margin-top: 0;
+  padding-top: 4px;
   padding-bottom: 0;
-  border-bottom: 4px solid #ead8b5;
+  border-bottom: 3px solid #ead8b5;
+  font-weight: 500;
   white-space: nowrap;
 }
 
 .metrics b {
-  min-width: 20px;
-  font-size: 24px;
+  min-width: 18px;
+  font-size: 21px;
+  font-weight: 500;
   line-height: 1;
 }
 
 .metrics em {
   color: #b9bbbf;
-  font-size: 21px;
+  font-size: 18px;
   font-style: normal;
-  font-weight: 800;
+  font-weight: 500;
   line-height: 1;
 }
 
 .metrics small {
   display: block;
-  margin-top: 10px;
+  margin-top: 0;
   color: var(--muted);
   font-size: 13px;
 }
