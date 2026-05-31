@@ -124,6 +124,12 @@ cd ui
 python -m http.server 5173 --bind 127.0.0.1
 ```
 
+The UI console includes three delivery paths:
+
+- Open a Google Doc edit link directly in a new browser tab.
+- Create a Chrome handoff request for a Google Docs editor/formatter bridge.
+- Generate a local `.docx` draft in the browser when cloud editing is not ready.
+
 ## Configuration
 
 Environment variables:

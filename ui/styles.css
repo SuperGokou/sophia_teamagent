@@ -1358,7 +1358,7 @@ svg {
   top: clamp(520px, 40vw, 720px);
   width: min(1040px, calc(100% - 28px));
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) minmax(230px, 0.62fr) auto;
+  grid-template-columns: minmax(280px, 1fr) minmax(280px, 0.78fr);
   align-items: end;
   gap: 12px;
   padding: 14px;
@@ -1412,7 +1412,9 @@ svg {
 }
 
 .draft-actions {
+  grid-column: 2;
   display: grid;
+  grid-template-columns: repeat(2, minmax(124px, 1fr));
   gap: 8px;
 }
 
@@ -1431,15 +1433,19 @@ svg {
 }
 
 .primary-action {
+  grid-column: 1 / -1;
   border: 0;
   color: #fff;
   background: #101111;
 }
 
 .secondary-action {
+  height: 34px;
+  padding-inline: 10px;
   border: 1px solid rgba(217, 191, 145, 0.95);
   color: #2f241c;
   background: #f6e7c6;
+  font-size: 12px;
 }
 
 .primary-action svg {
@@ -1447,23 +1453,36 @@ svg {
   height: 17px;
 }
 
-.doc-status {
-  grid-column: 1 / -1;
+.doc-status,
+.bridge-status {
   min-height: 18px;
   margin: 0;
   color: var(--muted);
   font-size: 12px;
+  line-height: 1.45;
 }
 
-.doc-status.is-ok {
+.doc-status {
+  grid-column: 1;
+}
+
+.bridge-status {
+  grid-column: 2;
+  align-self: start;
+}
+
+.doc-status.is-ok,
+.bridge-status.is-ok {
   color: #157060;
 }
 
-.doc-status.is-warn {
+.doc-status.is-warn,
+.bridge-status.is-warn {
   color: #8a5b17;
 }
 
-.doc-status.is-error {
+.doc-status.is-error,
+.bridge-status.is-error {
   color: #b72c20;
 }
 
@@ -2021,6 +2040,15 @@ textarea:focus-visible {
   .draft-console {
     grid-template-columns: minmax(240px, 1fr);
     top: 650px;
+  }
+
+  .draft-actions {
+    grid-column: 1;
+  }
+
+  .doc-status,
+  .bridge-status {
+    grid-column: 1 / -1;
   }
 }
 
