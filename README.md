@@ -11,7 +11,7 @@ python -m pip install -e .
 $env:NVIDIA_API_KEY = "your_nvidia_api_key"
 ```
 
-The default NVIDIA OpenAI-compatible base URL is `https://integrate.api.nvidia.com/v1`. The default model is `openai/gpt-oss-120b`; override it with `NVIDIA_MODEL` or `--model`.
+The default NVIDIA OpenAI-compatible base URL is `https://integrate.api.nvidia.com/v1`. By default the harness uses a role-based multi-agent router; use `--single-agent` if you want one model for every job.
 
 Do not hardcode API keys in source files. Put them in your environment or a local `.env` file that remains ignored by git.
 
@@ -48,7 +48,30 @@ Environment variables:
 - `NVIDIA_THINKING`: optional. When unset, no `chat_template_kwargs` is sent. Set `false` for models that support `chat_template_kwargs.thinking=false`.
 - `NVIDIA_TIMEOUT`: defaults to `120`.
 
-CLI options override environment values.
+Single-agent CLI options override the single-agent values above.
+
+## Multi-Agent Profiles
+
+Default role routing:
+
+- `planner`: `openai/gpt-oss-120b`, for checklists, structure, and package planning.
+- `drafter`: `deepseek-ai/deepseek-v4-pro`, for long legal templates and clause-heavy drafting.
+- `coder`: `qwen/qwen3-coder-480b-a35b-instruct`, reserved for future code/schema/automation tasks.
+- `reviewer`: `google/gemma-3n-e2b-it`, reserved for short sanity checks and lightweight review.
+
+Override any role with environment variables like:
+
+```powershell
+$env:NVIDIA_PLANNER_MODEL = "openai/gpt-oss-120b"
+$env:NVIDIA_DRAFTER_MODEL = "deepseek-ai/deepseek-v4-pro"
+$env:NVIDIA_DRAFTER_THINKING = "false"
+```
+
+Inspect the active profile map without making an API call:
+
+```powershell
+python -m legal_doc_agent --list-agents
+```
 
 ## Test
 

@@ -25,7 +25,12 @@ class NvidiaClient:
 
     config: NvidiaConfig
 
-    def complete(self, messages: Sequence[Message]) -> str:
+    def complete(
+        self,
+        messages: Sequence[Message],
+        *,
+        role: str | None = None,
+    ) -> str:
         """Return assistant text for the provided chat messages."""
 
         api_key = self.config.require_api_key()

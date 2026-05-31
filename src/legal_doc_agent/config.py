@@ -79,6 +79,28 @@ class NvidiaConfig:
             )
         return self.api_key
 
+    def with_overrides(
+        self,
+        *,
+        model: str | None = None,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        max_tokens: int | None = None,
+        thinking: bool | None = None,
+    ) -> "NvidiaConfig":
+        """Return a role-specific config while preserving shared auth settings."""
+
+        return NvidiaConfig(
+            api_key=self.api_key,
+            base_url=self.base_url,
+            model=model or self.model,
+            timeout_seconds=self.timeout_seconds,
+            temperature=self.temperature if temperature is None else temperature,
+            top_p=self.top_p if top_p is None else top_p,
+            max_tokens=self.max_tokens if max_tokens is None else max_tokens,
+            thinking=self.thinking if thinking is None else thinking,
+        )
+
 
 def _parse_optional_bool(value: str | None) -> bool | None:
     if value is None or value == "":

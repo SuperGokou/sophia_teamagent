@@ -13,7 +13,12 @@ from legal_doc_agent.prompts import build_generation_jobs, messages_for_job
 class CompletionClient(Protocol):
     """Provider protocol used by the harness and tests."""
 
-    def complete(self, messages: list[dict[str, str]]) -> str:
+    def complete(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        role: str | None = None,
+    ) -> str:
         """Generate assistant text from messages."""
 
 
@@ -76,14 +81,14 @@ class LegalDocumentAgent:
         artifact_dir.mkdir(parents=True, exist_ok=True)
         sections: list[DocumentSection] = []
         for job in jobs:
-            content = self._client.complete(messages_for_job(job))
+            content = self._client.complete(messages_for_job(job), role=job.agent_role)
             artifact_path = artifact_dir / f"{job.job_id}.md"
             artifact_path.write_text(content, encoding="utf-8")
             sections.append(DocumentSection(title=job.title, markdown=content))
             observations.append(
                 Observation(
                     status="success",
-                    summary=f"Generated {job.title}",
+                    summary=f"Generated {job.title} with {job.agent_role}",
                     next_actions=["Continue to next section"],
                     artifacts=[str(artifact_path)],
                 )
@@ -115,7 +120,12 @@ class LegalDocumentAgent:
 class DryRunClient:
     """Offline client used for smoke tests and formatting checks."""
 
-    def complete(self, messages: list[dict[str, str]]) -> str:
+    def complete(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        role: str | None = None,
+    ) -> str:
         user_prompt = messages[-1]["content"]
         title = "Generated Section"
         for line in user_prompt.splitlines():
@@ -126,6 +136,7 @@ class DryRunClient:
             f"# {title}\n\n"
             "This is dry-run placeholder content. It confirms that the harness, "
             "artifact writer, and DOCX renderer path are wired correctly.\n\n"
+            f"Agent role: {role or 'default'}.\n\n"
             "## Review Notice\n\n"
             "- Replace dry-run output with a real NVIDIA generation before use.\n"
             "- Have qualified counsel review all legal drafts.\n"

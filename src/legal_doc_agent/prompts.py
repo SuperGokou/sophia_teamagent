@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from legal_doc_agent.agents import DRAFTER_ROLE, PLANNER_ROLE
+
 
 SYSTEM_PROMPT = """You are a careful legal-document drafting assistant.
 Draft detailed professional text, but do not claim that the output is final legal advice.
@@ -36,6 +38,7 @@ class GenerationJob:
     job_id: str
     title: str
     prompt: str
+    agent_role: str
 
 
 def build_generation_jobs(specification: str, brief: str) -> list[GenerationJob]:
@@ -52,6 +55,7 @@ USER COMPANY BRIEF:
         GenerationJob(
             job_id="part_a_required_checklist",
             title="PART A - Required Document Checklist",
+            agent_role=PLANNER_ROLE,
             prompt=f"""{base_context}
 
 Generate only PART A from the source specification.
@@ -62,6 +66,7 @@ Do not generate PART B, C, or D in this response.
         GenerationJob(
             job_id="part_b_optional_recommended_checklist",
             title="PART B - Optional / Recommended Document Checklist",
+            agent_role=PLANNER_ROLE,
             prompt=f"""{base_context}
 
 Generate only PART B from the source specification.
@@ -72,6 +77,7 @@ Do not generate PART A, C, or D in this response.
         GenerationJob(
             job_id="part_c_preparation_materials",
             title="PART C - Preparation Materials Needed For Each Document",
+            agent_role=PLANNER_ROLE,
             prompt=f"""{base_context}
 
 Generate only PART C from the source specification.
@@ -96,6 +102,7 @@ Do not generate PART A, B, or D in this response.
             GenerationJob(
                 job_id=f"part_d_{index:02d}_{slug}",
                 title=f"PART D - Complete Template: {document_name}",
+                agent_role=DRAFTER_ROLE,
                 prompt=f"""{base_context}
 
 Generate only the PART D complete template for this required document:

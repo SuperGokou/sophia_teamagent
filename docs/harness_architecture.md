@@ -21,7 +21,7 @@ The runtime keeps tools narrow and explicit:
 
 - `load_spec`: read the long legal drafting specification.
 - `build_generation_jobs`: turn the full request into bounded generation jobs.
-- `complete`: call NVIDIA for one bounded job.
+- `complete`: call NVIDIA for one bounded job through a role-specific agent profile.
 - `write_docx`: convert completed sections into a Word document.
 - `write_artifacts`: save markdown outputs for audit and re-runs.
 
@@ -49,9 +49,16 @@ Each step returns a deterministic observation:
 
 The source specification is long, so the package is generated in sections:
 
-1. Part A required checklist.
-2. Part B optional/recommended checklist.
-3. Part C preparation materials.
-4. Part D one required document template at a time.
+1. Part A required checklist with the `planner` role.
+2. Part B optional/recommended checklist with the `planner` role.
+3. Part C preparation materials with the `planner` role.
+4. Part D one required document template at a time with the `drafter` role.
 
 This avoids asking the model for the entire legal package in one fragile response.
+
+## Model Roles
+
+- `planner`: GPT OSS 120B for structure, coverage, and checklist planning.
+- `drafter`: DeepSeek V4 Pro for long-form legal drafting and clause coverage.
+- `coder`: Qwen Coder for future integration, schema, and automation work.
+- `reviewer`: Gemma for short, low-cost sanity checks.

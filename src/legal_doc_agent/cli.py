@@ -6,6 +6,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from legal_doc_agent.agents import NvidiaAgentRouter, load_agent_profiles_from_env
 from legal_doc_agent.config import ConfigurationError, NvidiaConfig
 from legal_doc_agent.nvidia import NvidiaClient, ProviderError
 from legal_doc_agent.harness import DryRunClient, LegalDocumentAgent
@@ -19,17 +20,27 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
+        if args.list_agents:
+            _print_agent_profiles()
+            return 0
+
         brief = _load_brief(args)
-        client = DryRunClient() if args.dry_run else NvidiaClient(
-            NvidiaConfig.from_env(
-                base_url=args.base_url,
-                model=args.model,
-                temperature=args.temperature,
-                top_p=args.top_p,
-                max_tokens=args.max_tokens,
-                thinking=args.thinking,
+        if args.dry_run:
+            client = DryRunClient()
+        elif args.single_agent:
+            client = NvidiaClient(
+                NvidiaConfig.from_env(
+                    base_url=args.base_url,
+                    model=args.model,
+                    temperature=args.temperature,
+                    top_p=args.top_p,
+                    max_tokens=args.max_tokens,
+                    thinking=args.thinking,
+                )
             )
-        )
+        else:
+            base_config = NvidiaConfig.from_env(base_url=args.base_url)
+            client = NvidiaAgentRouter(base_config=base_config)
         agent = LegalDocumentAgent(client)
         result = agent.generate(
             specification_path=args.spec,
@@ -57,15 +68,25 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--out", type=Path, default=Path("outputs/post_formation_package.docx"))
     parser.add_argument("--artifact-dir", type=Path, default=Path("outputs/artifacts"))
     parser.add_argument("--base-url", help="NVIDIA-compatible base URL.")
-    parser.add_argument("--model", help="NVIDIA model name.")
-    parser.add_argument("--temperature", type=float, help="Sampling temperature.")
-    parser.add_argument("--top-p", type=float, help="Nucleus sampling top_p.")
-    parser.add_argument("--max-tokens", type=int, help="Max output tokens per section.")
+    parser.add_argument("--model", help="Single-agent NVIDIA model name.")
+    parser.add_argument("--temperature", type=float, help="Single-agent sampling temperature.")
+    parser.add_argument("--top-p", type=float, help="Single-agent nucleus sampling top_p.")
+    parser.add_argument("--max-tokens", type=int, help="Single-agent max output tokens per section.")
     parser.add_argument(
         "--thinking",
         action=argparse.BooleanOptionalAction,
         default=None,
         help="Enable or disable NVIDIA chat_template_kwargs.thinking.",
+    )
+    parser.add_argument(
+        "--single-agent",
+        action="store_true",
+        help="Use one NVIDIA model for every job instead of role-based routing.",
+    )
+    parser.add_argument(
+        "--list-agents",
+        action="store_true",
+        help="Print configured role-based model profiles and exit.",
     )
     parser.add_argument(
         "--dry-run",
@@ -88,6 +109,15 @@ def _load_brief(args: argparse.Namespace) -> str:
     if not brief.strip():
         raise ValueError("Company brief is empty.")
     return brief.strip()
+
+
+def _print_agent_profiles() -> None:
+    for role, profile in load_agent_profiles_from_env().items():
+        thinking = "unset" if profile.thinking is None else str(profile.thinking).lower()
+        print(
+            f"{role}: model={profile.model}, temperature={profile.temperature}, "
+            f"top_p={profile.top_p}, max_tokens={profile.max_tokens}, thinking={thinking}"
+        )
 
 
 if __name__ == "__main__":
