@@ -1,11 +1,13 @@
 :root {
   --ink: #121314;
   --muted: #8c9095;
-  --line: #e7e8e5;
-  --soft: #f5f6f4;
+  --line: #e5d0ad;
+  --soft: #fff0cf;
   --panel: #ffffff;
-  --mint: #32c8ba;
+  --mint: #41d0b8;
   --brown: #7b4f40;
+  --wood: #8a5438;
+  --cream: #fff3cd;
   --danger: #f02410;
   --purple: #7f2cff;
   --shadow: 0 22px 52px rgba(19, 21, 22, 0.08);
@@ -25,7 +27,9 @@ body {
 body {
   min-height: 100vh;
   color: var(--ink);
-  background: #f7f8f6;
+  background:
+    linear-gradient(90deg, rgba(255, 248, 224, 0.92), rgba(255, 250, 235, 0.94)),
+    repeating-linear-gradient(45deg, rgba(139, 84, 56, 0.08) 0 8px, transparent 8px 16px);
   font-family: "HarmonyOS Sans SC", "Noto Sans SC", "Microsoft YaHei UI", "Microsoft YaHei", Arial, sans-serif;
   letter-spacing: 0;
 }
@@ -54,7 +58,7 @@ svg {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 288px minmax(760px, 1fr) 560px;
-  background: #f7f8f6;
+  background: rgba(255, 250, 235, 0.52);
 }
 
 .sidebar {
@@ -64,7 +68,7 @@ svg {
   grid-template-rows: auto auto auto auto 1fr auto;
   gap: 24px;
   padding: 42px 20px 22px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 252, 242, 0.94);
   border-right: 1px solid var(--line);
   border-radius: 0 24px 24px 0;
 }
@@ -105,7 +109,7 @@ svg {
   color: #9ca0a5;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.76);
+  background: rgba(255, 255, 255, 0.72);
 }
 
 .search svg,
@@ -190,7 +194,7 @@ svg {
 }
 
 .conversation-pill.is-active {
-  background: #eff0ee;
+  background: #f2e4c7;
 }
 
 .history-item {
@@ -267,6 +271,7 @@ svg {
   font-size: 30px;
   line-height: 1;
   font-weight: 900;
+  text-shadow: 0 3px 0 rgba(255, 255, 255, 0.7);
 }
 
 .office-scene {
@@ -278,27 +283,34 @@ svg {
 .office-map {
   position: absolute;
   z-index: 1;
-  top: 104px;
+  top: 120px;
   left: 50%;
-  width: min(1110px, 94%);
+  width: min(1160px, 96%);
   max-width: none;
   height: auto;
   transform: translateX(-50%);
-  opacity: 0.88;
-  filter: drop-shadow(0 30px 28px rgba(0, 0, 0, 0.06));
+  opacity: 1;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter: drop-shadow(0 26px 0 rgba(73, 45, 31, 0.1));
   pointer-events: none;
 }
 
 .screen-name {
   position: absolute;
   z-index: 4;
-  top: 156px;
+  top: 132px;
   left: 50.8%;
   color: #1d2024;
   transform: translateX(-50%);
-  font-size: 18px;
-  font-weight: 800;
-  text-shadow: 0 2px 6px rgba(255, 255, 255, 0.8);
+  padding: 7px 12px;
+  border: 2px solid #5f3a2a;
+  border-radius: 4px;
+  background: rgba(255, 245, 205, 0.9);
+  box-shadow: 0 4px 0 rgba(95, 58, 42, 0.18);
+  font-size: 16px;
+  font-weight: 900;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .route-layer {
@@ -313,10 +325,10 @@ svg {
 
 .route {
   fill: none;
-  stroke: rgba(50, 200, 186, 0.5);
-  stroke-width: 0.22;
+  stroke: rgba(31, 161, 139, 0.66);
+  stroke-width: 0.28;
   stroke-linecap: round;
-  stroke-dasharray: 1.2 1.5;
+  stroke-dasharray: 1.1 1.3;
   animation: route-flow 2.8s linear infinite;
 }
 
@@ -330,8 +342,8 @@ svg {
   z-index: 4;
   left: var(--x);
   top: var(--y);
-  width: 144px;
-  height: 156px;
+  width: 152px;
+  height: 152px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -351,22 +363,24 @@ svg {
   position: absolute;
   z-index: 5;
   left: 50%;
-  top: -12px;
+  top: -2px;
   transform: translateX(-50%);
   padding: 4px 9px;
-  border-radius: 5px;
-  color: #111;
-  background: rgba(255, 255, 255, 0.88);
-  font-size: 18px;
-  font-weight: 800;
+  border: 2px solid #5f3a2a;
+  border-radius: 4px;
+  color: #3f261c;
+  background: rgba(255, 242, 203, 0.95);
+  box-shadow: 0 4px 0 rgba(95, 58, 42, 0.18);
+  font-size: 15px;
+  font-weight: 900;
   line-height: 1.15;
   white-space: nowrap;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .agent-node.is-active .agent-label {
-  color: #fff;
-  background: #111;
+  color: #2b1a12;
+  background: #ffe78f;
   animation: label-pop 0.3s ease-out;
 }
 
@@ -374,42 +388,45 @@ svg {
   position: absolute;
   z-index: 3;
   left: 50%;
-  top: 22px;
+  top: 14px;
   display: block;
   background-repeat: no-repeat;
-  background-size: 2048px 2048px;
-  transform: translateX(-50%) scale(0.72);
+  background-size: 2048px 1536px;
+  transform: translateX(-50%) scale(0.47);
   transform-origin: top center;
-  filter: drop-shadow(0 18px 12px rgba(0, 0, 0, 0.15));
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter: drop-shadow(0 10px 0 rgba(84, 52, 35, 0.14));
+  animation: star-idle 1.4s steps(8) infinite;
 }
 
 .sprite-working {
-  width: 130px;
-  height: 137px;
-  background-image: url("./assets/working@2x.webp");
-  background-position: -1px -1px;
+  width: 256px;
+  height: 256px;
+  background-image: url("./assets/star-office/star-idle-v5.png");
+  background-position: 0 0;
 }
 
 .sprite-standby {
-  width: 152px;
-  height: 136px;
-  background-image: url("./assets/standby@2x.webp");
-  background-position: -1px -1px;
+  width: 256px;
+  height: 256px;
+  background-image: url("./assets/star-office/star-idle-v5.png");
+  background-position: 0 0;
 }
 
 .sprite-salute {
-  width: 142px;
-  height: 137px;
-  background-image: url("./assets/salute@2x.webp");
-  background-position: -1px -1px;
+  width: 256px;
+  height: 256px;
+  background-image: url("./assets/star-office/star-idle-v5.png");
+  background-position: 0 0;
 }
 
 .agent-glow {
   position: absolute;
   left: 50%;
-  top: 88px;
-  width: 96px;
-  height: 34px;
+  top: 118px;
+  width: 84px;
+  height: 22px;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.13);
   filter: blur(12px);
@@ -418,19 +435,19 @@ svg {
 }
 
 .lead .agent-sprite {
-  transform: translateX(-50%) scale(0.76);
+  transform: translateX(-50%) scale(0.5);
 }
 
 .file .agent-sprite {
-  transform: translateX(-50%) scale(0.68);
+  transform: translateX(-50%) scale(0.46);
 }
 
 .browser .agent-sprite {
-  transform: translateX(-50%) scale(0.72);
+  transform: translateX(-50%) scale(0.46);
 }
 
 .review .agent-sprite {
-  transform: translateX(-50%) scale(0.52);
+  transform: translateX(-50%) scale(0.42);
   opacity: 0.9;
 }
 
@@ -446,8 +463,8 @@ svg {
   align-content: start;
   gap: 28px;
   padding: 38px 54px 36px 36px;
-  background: rgba(255, 255, 255, 0.28);
-  border-left: 1px solid rgba(226, 228, 224, 0.7);
+  background: rgba(255, 252, 242, 0.64);
+  border-left: 1px solid rgba(229, 208, 173, 0.9);
 }
 
 .window-tools {
@@ -524,7 +541,7 @@ svg {
   gap: 3px;
   margin-top: 17px;
   padding-bottom: 28px;
-  border-bottom: 4px solid #ececea;
+  border-bottom: 4px solid #ead8b5;
 }
 
 .metrics b {
@@ -572,7 +589,7 @@ svg {
   align-items: center;
   margin-top: 18px;
   border-radius: 28px;
-  background: #f1f2f0;
+  background: #f4e6c8;
 }
 
 .count-strip div {
@@ -582,7 +599,7 @@ svg {
 }
 
 .count-strip div + div {
-  border-left: 2px solid #dfe0dd;
+  border-left: 2px solid #dfc496;
 }
 
 .count-strip strong {
@@ -785,6 +802,12 @@ textarea:focus-visible {
   }
 }
 
+@keyframes star-idle {
+  to {
+    background-position: -2048px 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -896,7 +919,7 @@ textarea:focus-visible {
 
   .office-map {
     top: 86px;
-    width: 790px;
+    width: 900px;
     left: 50%;
   }
 
@@ -914,13 +937,13 @@ textarea:focus-visible {
   }
 
   .agent-sprite {
-    transform: translateX(-50%) scale(0.46);
+    transform: translateX(-50%) scale(0.32);
   }
 
   .lead .agent-sprite,
   .file .agent-sprite,
   .browser .agent-sprite {
-    transform: translateX(-50%) scale(0.46);
+    transform: translateX(-50%) scale(0.32);
   }
 
   .review {
@@ -928,18 +951,18 @@ textarea:focus-visible {
   }
 
   .agent-node.lead {
-    --x: 55% !important;
-    --y: 30% !important;
+    --x: 50% !important;
+    --y: 40% !important;
   }
 
   .agent-node.file {
-    --x: 38% !important;
-    --y: 70% !important;
+    --x: 34% !important;
+    --y: 54% !important;
   }
 
   .agent-node.browser {
-    --x: 70% !important;
-    --y: 72% !important;
+    --x: 66% !important;
+    --y: 54% !important;
   }
 
   .inspector {
