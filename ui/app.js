@@ -178,6 +178,9 @@ const conversationOpenCard = document.querySelector("#conversationOpenCard");
 const historyEntry = document.querySelector("#historyEntry");
 const historyItem = document.querySelector("#historyItem");
 const historyDelete = document.querySelector("#historyDelete");
+const processingConversationTitle = "正在处理细节";
+const processingConversationSubtitle = "多 Agent 正在处理文书细节";
+const processingConversationDetail = "Planner · Drafter · Reviewer · 法律文书处理中";
 const automationPage = document.querySelector("#automationPage");
 const automationEmpty = document.querySelector("#automationEmpty");
 const automationActive = document.querySelector("#automationActive");
@@ -1014,6 +1017,25 @@ function updateConversationTitle(title, subtitle) {
   }
 }
 
+function updateConversationDetail(title, detail) {
+  conversationOpenCard.querySelector("strong").textContent = title;
+  conversationOpenCard.querySelector("span").textContent = detail;
+}
+
+function showProcessingConversationDetail() {
+  updateConversationTitle(processingConversationTitle, processingConversationSubtitle);
+  updateConversationDetail(processingConversationTitle, processingConversationDetail);
+  runStatus.textContent = "处理中";
+}
+
+function isConversationProcessing() {
+  return (
+    officeStage.classList.contains("is-running") ||
+    runStatus.textContent === "进行中" ||
+    runStatus.textContent === "处理中"
+  );
+}
+
 function parseBriefFields(brief) {
   return brief.split(/\r?\n/).reduce((fields, line) => {
     const match = line.match(/^\s*([^:：]+)[:：]\s*(.*?)\s*$/);
@@ -1801,15 +1823,22 @@ function openConversation() {
     return;
   }
 
-  window.clearInterval(runTimer);
-  officeStage.classList.remove("is-running");
-  runningCount.textContent = "0";
-  doneCount.textContent = "1";
+  const wasProcessing = isConversationProcessing();
+  if (!wasProcessing) {
+    window.clearInterval(runTimer);
+    officeStage.classList.remove("is-running");
+    runStatus.textContent = "已打开";
+    updateConversationDetail("已打开文件包", "Reviewer · Word export · 100%");
+    activate("reviewer");
+    renderTimeline(timeline.length);
+    setProgress(100);
+  } else {
+    showProcessingConversationDetail();
+  }
+
+  doneCount.textContent = wasProcessing ? "0" : "1";
+  runningCount.textContent = wasProcessing ? "1" : "0";
   totalCount.textContent = "1";
-  runStatus.textContent = "已打开";
-  activate("reviewer");
-  renderTimeline(timeline.length);
-  setProgress(100);
   setConversationOpen(true);
 }
 
@@ -1907,11 +1936,10 @@ async function startLegalDraftRun() {
   currentRunTokens = 0;
   writeCurrentRunTokens(currentRunTokens);
   updateTokenDisplay();
-  updateConversationTitle(summarizeBrief(), "多 Agent 协作草拟中");
+  showProcessingConversationDetail();
   generateLegalButton.disabled = true;
   sendToAgentButton.disabled = true;
   officeStage.classList.add("is-running");
-  runStatus.textContent = "进行中";
   runningCount.textContent = "1";
   doneCount.textContent = "0";
   totalCount.textContent = "1";
@@ -1950,7 +1978,8 @@ async function startLegalDraftRun() {
     renderAgents();
     renderTimeline(timeline.length);
     setProgress(100);
-    updateConversationTitle(summarizeBrief(), "Reviewer 审核完成");
+    updateConversationTitle("Reviewer 审核完成", "高质量法律文书已完成");
+    updateConversationDetail("Reviewer 审核完成", "Word / Google Doc 交付准备完成");
     completeDraftOutput(payload, docUrlSnapshot);
     const draftSnapshot = String(payload?.draft || "").trim();
 
