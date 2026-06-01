@@ -222,12 +222,12 @@ const currentRunTokenKey = "sophia.currentRunTokens.v1";
 const automationTasksKey = "sophia.automation.tasks.v1";
 const chromeBridgeRequestKey = "sophia.chromeDocBridge.v1";
 const chromeBridgeRequestTtlMs = 10 * 60 * 1000;
-const googleDocServiceBaseUrl = "http://127.0.0.1:8765";
+const googleDocServiceBaseUrl = "http://127.0.0.1:9765";
 const googleDocServiceHealthUrl = `${googleDocServiceBaseUrl}/health`;
 const googleDocServiceWriteUrl = `${googleDocServiceBaseUrl}/google-doc/write`;
 const googleDocServiceHealthTimeoutMs = 3500;
 const googleDocServiceWriteTimeoutMs = 45000;
-const generationServiceBaseUrl = "http://127.0.0.1:8766";
+const generationServiceBaseUrl = "http://127.0.0.1:9766";
 const generationServiceHealthUrl = `${generationServiceBaseUrl}/health`;
 const generationServiceGenerateUrl = `${generationServiceBaseUrl}/legal-doc/generate`;
 const generationServiceHealthTimeoutMs = 3500;
@@ -773,14 +773,14 @@ function googleDocServiceFailureMessage(error) {
   if (error?.name === "AbortError" || error?.message === "request_timeout") {
     return "本机 Google OAuth 服务没有及时响应。请确认授权弹窗是否被挡住，或重启服务后再试。";
   }
-  return "本机 Google OAuth 服务未运行。请启动 python -m legal_doc_agent google-doc serve --port 8765，或先复制正文/下载 DOCX。";
+  return "本机 Google OAuth 服务未运行。请启动 python -m legal_doc_agent google-doc serve --port 9765，或先复制正文/下载 DOCX。";
 }
 
 function generationServiceFailureMessage(error) {
   if (error?.name === "AbortError" || error?.message === "request_timeout") {
     return "本机 NVIDIA 多 Agent 生成服务超时。请查看服务终端；不要下载本地 fallback。";
   }
-  return "本机 NVIDIA 多 Agent 生成服务未运行。请启动 python -m legal_doc_agent serve --port 8766；未生成真实文书前不会下载 DOCX。";
+  return "本机 NVIDIA 多 Agent 生成服务未运行。请启动 python -m legal_doc_agent serve --port 9766；未生成真实文书前不会下载 DOCX。";
 }
 
 async function requestBackendLegalDraft(brief) {
@@ -1621,7 +1621,7 @@ function downloadLocalDocx() {
 
   if (!generatedDraftText || generatedDraftSource !== "backend") {
     setGoogleDocStatus("error", "还没有真实 NVIDIA 多 Agent 生成结果。请先启动后端并点击“多 Agent 生成”。");
-    setBridgeStatus("error", "不会下载浏览器本地 fallback。请启动 python -m legal_doc_agent serve --port 8766 后重试。");
+    setBridgeStatus("error", "不会下载浏览器本地 fallback。请启动 python -m legal_doc_agent serve --port 9766 后重试。");
     return;
   }
 
@@ -1921,7 +1921,7 @@ async function startLegalDraftRun() {
   activate(agents[0].id);
   setProgress(progress);
   setGoogleDocStatus("warn", "正在连接本机 NVIDIA 多 Agent 生成服务...");
-  setBridgeStatus("warn", "需要 python -m legal_doc_agent serve --port 8766 正在运行；不会使用浏览器 fallback。");
+  setBridgeStatus("warn", "需要 python -m legal_doc_agent serve --port 9766 正在运行；不会使用浏览器 fallback。");
 
   const animationTimer = window.setInterval(() => {
     if (runId !== activeRunId) {

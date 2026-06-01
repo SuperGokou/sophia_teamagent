@@ -85,7 +85,7 @@ class LegalGenerationLocalService:
 def run_generation_service(
     *,
     host: str = "127.0.0.1",
-    port: int = 8766,
+    port: int = 9766,
     spec_path: Path = DEFAULT_SPEC_PATH,
     output_dir: Path = DEFAULT_OUTPUT_DIR,
     base_url: str | None = None,

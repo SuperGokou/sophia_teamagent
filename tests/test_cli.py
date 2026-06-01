@@ -5,8 +5,9 @@ import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from pathlib import Path
+from unittest.mock import patch
 
-from legal_doc_agent.cli import main
+from legal_doc_agent.cli import _build_google_doc_parser, main
 
 
 class CliTests(unittest.TestCase):
@@ -79,6 +80,16 @@ class CliTests(unittest.TestCase):
 
             self.assertEqual(exit_code, 1)
             self.assertIn("error:", stderr.getvalue())
+
+    def test_local_services_default_to_non_reserved_ports(self) -> None:
+        with patch("legal_doc_agent.cli.run_generation_service") as run_generation_service:
+            self.assertEqual(main(["serve"]), 0)
+
+        self.assertEqual(run_generation_service.call_args.kwargs["port"], 9766)
+
+        parser = _build_google_doc_parser()
+        args = parser.parse_args(["serve"])
+        self.assertEqual(args.port, 9765)
 
 
 if __name__ == "__main__":

@@ -63,7 +63,7 @@ def run_google_doc_service(
     formatter: GoogleDocsLegalFormatter,
     *,
     host: str = "127.0.0.1",
-    port: int = 8765,
+    port: int = 9765,
 ) -> None:
     """Run the local Google Doc bridge until interrupted."""
 

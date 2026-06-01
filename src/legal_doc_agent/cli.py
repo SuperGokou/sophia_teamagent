@@ -365,7 +365,7 @@ def _load_google_doc_draft(args: argparse.Namespace) -> str:
 def _serve_main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Run the local NVIDIA legal generation service.")
     parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=8766)
+    parser.add_argument("--port", type=int, default=9766)
     parser.add_argument("--spec", type=Path, default=DEFAULT_GENERATION_SPEC_PATH)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_GENERATION_OUTPUT_DIR)
     parser.add_argument("--base-url", help="NVIDIA-compatible base URL.")
@@ -472,7 +472,7 @@ def _build_google_doc_parser() -> argparse.ArgumentParser:
         help="Run the local Google Docs OAuth service for the web UI.",
     )
     serve.add_argument("--host", default="127.0.0.1")
-    serve.add_argument("--port", type=int, default=8765)
+    serve.add_argument("--port", type=int, default=9765)
     return parser
 
 

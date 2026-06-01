@@ -38,12 +38,13 @@ python -m legal_doc_agent --dry-run --brief-file input/company_brief.md --out ou
 Run the local NVIDIA generation service used by the web UI:
 
 ```powershell
-python -m legal_doc_agent serve --port 8766
+python -m legal_doc_agent serve --port 9766
 ```
 
-The UI calls `POST http://127.0.0.1:8766/legal-doc/generate` before it enables
+The UI calls `POST http://127.0.0.1:9766/legal-doc/generate` before it enables
 copy, Google Doc write, or DOCX download. If this service is not running, the UI
 must fail visibly instead of downloading a browser-generated fallback summary.
+Port `9766` is used to avoid common Windows reserved local-port ranges.
 
 The role-based flow always runs a final `reviewer` quality gate after planning,
 analysis, reasoning, and drafting. The reviewer writes
@@ -94,7 +95,7 @@ python -m legal_doc_agent google-doc write "https://docs.google.com/document/d/.
 Run the local OAuth service that the web UI can call:
 
 ```powershell
-python -m legal_doc_agent google-doc serve --port 8765
+python -m legal_doc_agent google-doc serve --port 9765
 ```
 
 On first run, Google opens a browser consent page. Sign in with the same account
@@ -104,12 +105,13 @@ that has Editor access to the target document. The local token is saved under
 When this service is running, the UI's `Multi Agent` flow will attempt to call:
 
 ```text
-POST http://127.0.0.1:8765/google-doc/write
+POST http://127.0.0.1:9765/google-doc/write
 ```
 
 If the service is not running, the UI still exposes the generated draft for
 copy/download only after the local NVIDIA generation service has already
 returned a real multi-agent draft.
+Port `9765` is used to avoid common Windows reserved local-port ranges.
 
 When editor access is confirmed, the formatter can apply a standard legal layout:
 1 inch margins, Times New Roman 11 pt body text, 115% line spacing, and consistent
