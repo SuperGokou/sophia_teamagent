@@ -897,54 +897,220 @@ function briefField(fields, names, fallback = "To be provided") {
   return found || fallback;
 }
 
+function compactLines(value, limit = 12) {
+  return value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, limit);
+}
+
+function formatBulletList(items) {
+  return items.map((item) => `- ${item}`).join("\n");
+}
+
+function inferLegalMatter(brief, fields) {
+  const text = `${brief} ${Object.values(fields).join(" ")}`.toLowerCase();
+  const candidates = [
+    {
+      id: "nda",
+      title: "CONFIDENTIALITY / NDA DRAFT",
+      keywords: ["nda", "confidential", "non-disclosure", "保密", "保密协议", "nda协议"],
+    },
+    {
+      id: "demand-letter",
+      title: "LEGAL DEMAND LETTER DRAFT",
+      keywords: ["demand letter", "breach", "违约", "催款", "律师函", "索赔", "欠款", "notice of breach"],
+    },
+    {
+      id: "service-agreement",
+      title: "SERVICES / CONTRACTOR AGREEMENT DRAFT",
+      keywords: ["service agreement", "contractor", "consulting", "vendor", "服务合同", "外包", "顾问", "独立承包"],
+    },
+    {
+      id: "employment",
+      title: "EMPLOYMENT / OFFER DOCUMENT DRAFT",
+      keywords: ["employment", "offer letter", "employee", "termination", "雇佣", "劳动", "入职", "解雇"],
+    },
+    {
+      id: "privacy-terms",
+      title: "SAAS TERMS / PRIVACY PACKAGE DRAFT",
+      keywords: ["terms of service", "privacy", "saas", "subscription", "用户协议", "隐私", "服务条款"],
+    },
+    {
+      id: "lease",
+      title: "LEASE / REAL ESTATE DOCUMENT DRAFT",
+      keywords: ["lease", "tenant", "landlord", "rent", "租赁", "房东", "租客", "租金"],
+    },
+    {
+      id: "litigation",
+      title: "LITIGATION PLEADING / CASE WORKUP DRAFT",
+      keywords: ["complaint", "motion", "lawsuit", "court", "pleading", "起诉", "诉讼", "法院", "答辩"],
+    },
+    {
+      id: "corporate",
+      title: "CORPORATE POST-FORMATION PACKAGE DRAFT",
+      keywords: ["delaware", "c-corp", "corporation", "founder", "equity", "stock", "bylaws", "公司设立", "股权", "董事会"],
+    },
+  ];
+
+  const found = candidates.find((candidate) => (
+    candidate.keywords.some((keyword) => text.includes(keyword))
+  ));
+  return found || {
+    id: "general",
+    title: "CUSTOM LEGAL DOCUMENT DRAFT",
+    keywords: [],
+  };
+}
+
+function matterChecklist(matter) {
+  const shared = [
+    "Confirm governing law, venue, parties' legal names, addresses, and signature authority.",
+    "Mark all missing facts as bracketed blanks instead of inventing facts.",
+    "Run final reviewer check for internal consistency, defined terms, dates, and signature blocks.",
+  ];
+  const byMatter = {
+    nda: [
+      "Define disclosing party, receiving party, purpose, confidential information, exclusions, term, and return/destruction duties.",
+      "Add non-use, non-disclosure, compelled disclosure, equitable relief, and survival language.",
+      "Check whether mutual or one-way confidentiality is required.",
+    ],
+    "demand-letter": [
+      "State the factual timeline, contract or legal basis, breach/default, amount demanded, and cure deadline.",
+      "Preserve rights without overstating claims, threats, or unsupported legal conclusions.",
+      "Add delivery method, response deadline, and document preservation notice if appropriate.",
+    ],
+    "service-agreement": [
+      "Define scope, deliverables, milestones, fees, payment timing, expenses, acceptance, and change orders.",
+      "Address IP ownership, confidentiality, data handling, warranties, limitation of liability, and termination.",
+      "Confirm independent contractor status and tax responsibilities.",
+    ],
+    employment: [
+      "Define role, start date, compensation, benefits, at-will status, restrictive covenants, and policy references.",
+      "Check wage/hour, equity, confidentiality, assignment, and termination language.",
+      "Flag jurisdiction-specific employment law issues for counsel review.",
+    ],
+    "privacy-terms": [
+      "Separate user-facing terms, privacy disclosures, acceptable use, subscription/payment terms, and data processing terms.",
+      "Identify collected data, processing purposes, subprocessors, security controls, deletion, and user rights.",
+      "Flag consumer privacy, AI output, data retention, and cross-border transfer issues.",
+    ],
+    lease: [
+      "Define premises, term, rent, deposit, permitted use, maintenance, utilities, insurance, default, and remedies.",
+      "Check notices, renewal, assignment/sublease, casualty, indemnity, and local law requirements.",
+      "Flag any statutory disclosures or tenant-protection rules for counsel review.",
+    ],
+    litigation: [
+      "Separate facts, claims/defenses, elements, evidence, requested relief, and procedural posture.",
+      "Build a citation checklist and avoid asserting unsupported facts.",
+      "Flag filing deadlines, jurisdiction, service, and local rule requirements.",
+    ],
+    corporate: [
+      "Prepare board consent, officer appointments, equity issuance workflow, cap table, founder stock paperwork, and IP assignment checklist.",
+      "Confirm share numbers, purchase price, vesting, 83(b) deadlines, registered agent, and Delaware file number.",
+      "Check all signing parties and record book deliverables before export.",
+    ],
+    general: [
+      "Classify the requested legal document, identify parties, purpose, governing law, deadlines, and desired output.",
+      "Create a custom document outline from the user's facts before drafting operative clauses.",
+      "Flag any facts, citations, or attachments required before final use.",
+    ],
+  };
+  return [...(byMatter[matter.id] || byMatter.general), ...shared];
+}
+
+function matterDraftSections(matter) {
+  const byMatter = {
+    nda: ["Parties", "Purpose", "Confidential Information", "Exclusions", "Use Restrictions", "Return / Destruction", "Term and Survival", "Remedies", "Signatures"],
+    "demand-letter": ["Sender and Recipient", "Background", "Breach / Default", "Demand", "Deadline to Cure", "Reservation of Rights", "Delivery"],
+    "service-agreement": ["Parties", "Scope of Services", "Deliverables", "Fees and Payment", "IP Ownership", "Confidentiality", "Term and Termination", "Liability", "Signatures"],
+    employment: ["Employer and Candidate", "Position", "Compensation", "Start Date", "Benefits", "Confidentiality / IP", "At-Will / Termination", "Conditions", "Acceptance"],
+    "privacy-terms": ["Service Description", "User Obligations", "Subscriptions", "AI / Data Terms", "Privacy Disclosures", "Security", "Termination", "Dispute Resolution"],
+    lease: ["Parties", "Premises", "Term", "Rent and Deposit", "Use", "Maintenance", "Insurance", "Default", "Notices", "Signatures"],
+    litigation: ["Caption", "Procedural Posture", "Facts", "Claims or Defenses", "Authorities Needed", "Relief Requested", "Filing Checklist"],
+    corporate: ["Company Snapshot", "Required Documents", "Founder Equity", "IP Assignment", "Corporate Approvals", "Tax / 83(b)", "Record Book", "Reviewer Gate"],
+    general: ["Objective", "Parties", "Background Facts", "Operative Terms", "Open Issues", "Reviewer Gate"],
+  };
+  return byMatter[matter.id] || byMatter.general;
+}
+
 function buildGeneratedLegalDraft(brief) {
   const fields = parseBriefFields(brief);
-  const companyName = briefField(fields, ["company legal name", "company name", "公司名称"]);
-  const delawareFileNumber = briefField(fields, ["delaware file number", "file number", "delaware 编号"]);
-  const founderOne = briefField(fields, ["founder 1", "founder one", "创始人1"]);
-  const founderTwo = briefField(fields, ["founder 2", "founder two", "创始人2"]);
-  const ownership = briefField(fields, ["ownership", "equity", "股权"], "50/50 or as separately confirmed");
-  const business = briefField(fields, ["business", "business model", "业务"], "AI/SaaS business activities to be confirmed");
-  const notes = briefField(fields, ["special notes", "notes", "备注"], "No additional notes provided");
+  const matter = inferLegalMatter(brief, fields);
+  const providedLines = compactLines(brief, 18);
+  const fieldEntries = Object.entries(fields)
+    .filter(([, value]) => value)
+    .map(([key, value]) => `${key}: ${value}`);
+  const clientOrCompany = briefField(
+    fields,
+    ["company legal name", "company name", "client", "party", "公司名称", "客户", "当事人"],
+    "To be identified from the user's matter",
+  );
+  const jurisdiction = briefField(
+    fields,
+    ["jurisdiction", "governing law", "state", "辖区", "适用法律"],
+    matter.id === "corporate" ? "Delaware / applicable U.S. law to confirm" : "To be confirmed",
+  );
+  const requestedOutput = briefField(
+    fields,
+    ["document", "document type", "requested output", "goal", "文书", "文书类型", "目标"],
+    matter.title,
+  );
+  const urgency = briefField(
+    fields,
+    ["deadline", "due date", "urgency", "截止日期", "期限"],
+    "No deadline provided",
+  );
   const generatedAt = new Date().toLocaleString("en-US");
+  const checklist = matterChecklist(matter);
+  const draftSections = matterDraftSections(matter);
 
   return [
-    "POST-FORMATION LEGAL DOCUMENT PACKAGE",
+    matter.title,
     "",
-    "Prepared for counsel review. This draft is not legal advice and should be reviewed by qualified counsel before signature or filing.",
+    "Prepared for counsel review. This draft is not legal advice and should be reviewed by qualified counsel before signature, filing, or delivery.",
     "",
-    "1. COMPANY SNAPSHOT",
-    `Legal name: ${companyName}`,
-    `Delaware file number: ${delawareFileNumber}`,
-    `Founder 1: ${founderOne}`,
-    `Founder 2: ${founderTwo}`,
-    `Ownership: ${ownership}`,
-    `Business: ${business}`,
-    `Special notes: ${notes}`,
+    "1. REQUEST CLASSIFICATION",
+    `Detected matter type: ${matter.id}`,
+    `Requested output: ${requestedOutput}`,
+    `Primary party / client: ${clientOrCompany}`,
+    `Jurisdiction / governing law: ${jurisdiction}`,
+    `Deadline / urgency: ${urgency}`,
     "",
-    "2. REQUIRED DOCUMENT CHECKLIST",
-    "- Board consent approving initial corporate actions, officers, bank authorization, equity issuance workflow, and record book setup.",
-    "- Founder stock purchase agreements with vesting, assignment, tax, and signature blocks to be completed before execution.",
-    "- IP assignment and confidentiality agreements for each founder and early contributor.",
-    "- Cap table schedule reflecting ownership, share class, consideration, vesting status, and any unresolved blanks.",
-    "- 83(b) election reminders and mailing instructions for restricted stock recipients, if applicable.",
+    "2. USER-PROVIDED FACTS",
+    fieldEntries.length
+      ? formatBulletList(fieldEntries)
+      : formatBulletList(providedLines.length ? providedLines : ["No structured facts were provided."]),
     "",
-    "3. DRAFTING INSTRUCTIONS FOR THE AGENT TEAM",
-    "- Planner confirms missing company facts, required documents, and execution order.",
-    "- Retriever checks local RAG or official source notes before inserting legal citations.",
-    "- Drafter prepares complete templates and marks any unknown facts as bracketed blanks.",
-    "- Reviewer blocks completion if the document is internally inconsistent, unsupported by authority, or not ready for legal-document formatting.",
+    "3. MATTER-SPECIFIC CHECKLIST",
+    formatBulletList(checklist),
     "",
-    "4. GOOGLE DOC / WORD LAYOUT STANDARD",
+    "4. DRAFT STRUCTURE",
+    formatBulletList(draftSections.map((section, index) => `${index + 1}. ${section}`)),
+    "",
+    "5. FIRST-PASS DRAFTING NOTES",
+    `The drafter should tailor operative language to: ${providedLines.slice(0, 4).join(" | ") || "the user's pasted requirements"}.`,
+    "Use bracketed blanks for missing facts, parties, dates, dollar amounts, addresses, attachments, and citations.",
+    "Do not reuse a corporate formation template unless the detected matter type is corporate.",
+    "",
+    "6. GOOGLE DOC / WORD LAYOUT STANDARD",
     "- Use 1 inch margins, Times New Roman 11 pt, 115% line spacing, and consistent paragraph spacing.",
     "- Keep signature blocks on readable page breaks and avoid orphaned headings.",
     "- If editing Google Docs, confirm the link opens with Editor permission before automated layout changes.",
     "",
-    "5. REVIEWER QUALITY GATE",
-    "Status: Ready for attorney review, not final execution.",
-    "Blocking items: Confirm missing names, addresses, share numbers, purchase price, vesting schedules, and tax-election deadlines.",
+    "7. REVIEWER QUALITY GATE",
+    "Status: Ready for attorney review workflow, not final execution.",
+    "Blocking items: confirm missing facts, jurisdiction-specific rules, source authority, signatory authority, and all exhibits.",
     `Generated locally: ${generatedAt}`,
   ].join("\n");
+}
+
+if (typeof window !== "undefined") {
+  window.SophiaDraftGenerator = {
+    buildGeneratedLegalDraft,
+    inferLegalMatter,
+  };
 }
 
 function completeDraftOutput() {
