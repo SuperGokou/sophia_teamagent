@@ -157,6 +157,7 @@ const progressValue = document.querySelector("#progressValue");
 const progressBar = document.querySelector("#progressBar");
 const conversationTokenLabel = document.querySelector("#conversationTokenLabel");
 const briefInput = document.querySelector("#briefInput");
+const sendToAgentButton = document.querySelector("#sendToAgentButton");
 const googleDocInput = document.querySelector("#googleDocInput");
 const googleDocCheckButton = document.querySelector("#googleDocCheckButton");
 const googleDocStatus = document.querySelector("#googleDocStatus");
@@ -1374,8 +1375,20 @@ function startLegalDraftRun() {
   }, 900);
 }
 
+function sendBriefToAgent() {
+  setGoogleDocStatus("warn", "已发送给 Planner，正在启动多 Agent 法律文书流程。");
+  startLegalDraftRun();
+}
+
 runButton.addEventListener("click", prepareNewConversation);
 generateLegalButton.addEventListener("click", startLegalDraftRun);
+sendToAgentButton.addEventListener("click", sendBriefToAgent);
+briefInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+    event.preventDefault();
+    sendBriefToAgent();
+  }
+});
 googleDocCheckButton.addEventListener("click", checkGoogleDocLink);
 googleDocInput.addEventListener("change", checkGoogleDocLink);
 openGoogleDocButton.addEventListener("click", () => openGoogleDocLink());

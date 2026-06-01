@@ -146,8 +146,8 @@
         </section>
 
         <section class="draft-console" aria-label="法律文书生成控制台">
-          <label class="draft-field draft-brief">
-            <span>法律文书需求</span>
+          <div class="draft-field draft-brief">
+            <label for="briefInput">法律文书需求</label>
             <textarea id="briefInput" spellcheck="false">Company legal name:
 Delaware file number:
 Founder 1:
@@ -155,7 +155,11 @@ Founder 2:
 Ownership: 50/50
 Business: AI agents, staffing automation, SaaS workflow products
 Special notes:</textarea>
-          </label>
+            <button class="send-agent-button" type="button" id="sendToAgentButton" title="发送给 Agent（Ctrl+Enter）" aria-label="发送给 Agent">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
+              <span>发送给 Agent</span>
+            </button>
+          </div>
           <label class="draft-field">
             <span>Google Doc 编辑链接</span>
             <input id="googleDocInput" type="url" placeholder="https://docs.google.com/document/d/.../edit" />
