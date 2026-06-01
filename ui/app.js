@@ -2,9 +2,10 @@ const agents = [
   {
     id: "planner",
     name: "Planner",
-    model: "openai/gpt-oss-120b",
+    model: "google/gemma-3n-e4b-it",
     role: "结构规划",
     detail: "拆分需求、列出文件清单、控制多模型输出顺序。",
+    work: "解析用户需求，确认文书类型、缺失字段、交付顺序和质量门。",
     step: "Required checklist",
   },
   {
@@ -13,6 +14,7 @@ const agents = [
     model: "deepseek-ai/deepseek-v4-pro",
     role: "法律草拟",
     detail: "生成长模板、条款、附件、签署页和缺项标记。",
+    work: "把需求扩展成完整法律文书包，生成正文、附件、签署页和缺项标记。",
     step: "Draft package",
   },
   {
@@ -21,14 +23,16 @@ const agents = [
     model: "nvidia/nemotron-3-super-120b-a12b",
     role: "检索核验",
     detail: "对照本地 RAG、SQLite FTS5、引用依据和版本日期。",
+    work: "检查 Google Doc/Chrome 接管状态，核验引用、版本日期和文书格式。",
     step: "Citation check",
   },
   {
     id: "reviewer",
     name: "Reviewer",
-    model: "openai/gpt-oss-120b",
+    model: "google/gemma-3n-e4b-it",
     role: "最终审核",
     detail: "最终质量门：完整性、内部一致性、引用支持、版式和律师复核风险。",
+    work: "执行最终质量门，检查完整性、一致性、法律引用、格式和律师复核风险。",
     step: "Quality gate",
   },
 ];
@@ -158,6 +162,7 @@ const progressBar = document.querySelector("#progressBar");
 const conversationProgress = document.querySelector("#conversationProgress");
 const conversationProgressBar = document.querySelector("#conversationProgressBar");
 const conversationTokenLabel = document.querySelector("#conversationTokenLabel");
+const agentWorkFeed = document.querySelector("#agentWorkFeed");
 const briefInput = document.querySelector("#briefInput");
 const sendToAgentButton = document.querySelector("#sendToAgentButton");
 const googleDocInput = document.querySelector("#googleDocInput");
@@ -1768,6 +1773,40 @@ function renderAgents() {
       `;
     })
     .join("");
+  renderAgentWorkDetails();
+}
+
+function renderAgentWorkDetails() {
+  if (!agentWorkFeed) {
+    return;
+  }
+
+  const allDone = runningCount.textContent === "0" && doneCount.textContent === "1";
+  const failed = runStatus.textContent === "生成失败";
+  agentWorkFeed.innerHTML = agents
+    .map((agent, index) => {
+      const isCurrent = !allDone && index === activeIndex;
+      const isDone = allDone || index < activeIndex;
+      const state = failed && isCurrent ? "需重试" : isDone ? "已完成" : isCurrent ? "处理中" : "等待";
+      const body = isCurrent ? agent.work : agent.detail;
+      const currentClass = isCurrent ? " is-current" : "";
+      const doneClass = isDone ? " is-done" : "";
+      return `
+        <article class="agent-work-item${currentClass}${doneClass}">
+          <i aria-hidden="true"></i>
+          <div>
+            <header>
+              <strong>${agent.name}</strong>
+              <em>${state}</em>
+            </header>
+            <span>${agent.role} · ${agent.step}</span>
+            <p>${body}</p>
+            <small>${agent.model}</small>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
 }
 
 function renderTimeline(progressIndex = 1) {
@@ -1843,6 +1882,7 @@ function openConversation() {
   doneCount.textContent = wasProcessing ? "0" : "1";
   runningCount.textContent = wasProcessing ? "1" : "0";
   totalCount.textContent = "1";
+  renderAgentWorkDetails();
   setConversationOpen(true);
 }
 
@@ -2004,6 +2044,7 @@ async function startLegalDraftRun() {
     runningCount.textContent = "0";
     doneCount.textContent = "0";
     totalCount.textContent = "0";
+    renderAgentWorkDetails();
     setProgress(0);
     generatedDraftText = "";
     generatedDraftSource = "";
