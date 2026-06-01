@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import json
+import os
 import unittest
 from unittest.mock import Mock, patch
 
 from legal_doc_agent.config import ConfigurationError, NvidiaConfig
-from legal_doc_agent.nvidia import NvidiaClient
+from legal_doc_agent.nvidia import NvidiaClient, ProviderError
 
 
 class NvidiaClientTests(unittest.TestCase):
@@ -14,6 +15,44 @@ class NvidiaClientTests(unittest.TestCase):
 
         with self.assertRaises(ConfigurationError):
             client.complete([{"role": "user", "content": "hello"}])
+
+    def test_from_env_reads_project_dotenv_without_mutating_environment(self) -> None:
+        dotenv_values = {
+            "NVIDIA_API_KEY": "dotenv-key",
+            "NVIDIA_BASE_URL": "https://example.test/v1",
+            "NVIDIA_MODEL": "dotenv-model",
+            "NVIDIA_TEMPERATURE": "0.4",
+            "NVIDIA_TOP_P": "0.8",
+            "NVIDIA_MAX_TOKENS": "1234",
+            "NVIDIA_STREAM": "true",
+        }
+
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch("legal_doc_agent.config._load_dotenv_values", return_value=dotenv_values),
+        ):
+            config = NvidiaConfig.from_env()
+
+        self.assertEqual(config.api_key, "dotenv-key")
+        self.assertEqual(config.base_url, "https://example.test/v1")
+        self.assertEqual(config.model, "dotenv-model")
+        self.assertEqual(config.temperature, 0.4)
+        self.assertEqual(config.top_p, 0.8)
+        self.assertEqual(config.max_tokens, 1234)
+        self.assertTrue(config.stream)
+        self.assertNotIn("NVIDIA_API_KEY", os.environ)
+
+    def test_process_environment_overrides_dotenv_values(self) -> None:
+        with (
+            patch.dict(os.environ, {"NVIDIA_API_KEY": "env-key"}, clear=True),
+            patch(
+                "legal_doc_agent.config._load_dotenv_values",
+                return_value={"NVIDIA_API_KEY": "dotenv-key"},
+            ),
+        ):
+            config = NvidiaConfig.from_env()
+
+        self.assertEqual(config.api_key, "env-key")
 
     @patch("urllib.request.urlopen")
     def test_posts_openai_compatible_payload(self, urlopen: Mock) -> None:
@@ -64,6 +103,30 @@ class NvidiaClientTests(unittest.TestCase):
         request = urlopen.call_args.args[0]
         payload = json.loads(request.data.decode("utf-8"))
         self.assertEqual(payload["chat_template_kwargs"], {"thinking": False})
+
+    @patch("urllib.request.urlopen")
+    def test_reports_truncated_reasoning_only_response(self, urlopen: Mock) -> None:
+        response = Mock()
+        response.read.return_value = json.dumps(
+            {
+                "choices": [
+                    {
+                        "finish_reason": "length",
+                        "message": {
+                            "content": "",
+                            "reasoning_content": "thinking without final content",
+                        },
+                    }
+                ]
+            }
+        ).encode("utf-8")
+        response.__enter__ = Mock(return_value=response)
+        response.__exit__ = Mock(return_value=False)
+        urlopen.return_value = response
+        client = NvidiaClient(NvidiaConfig(api_key="key", max_tokens=32))
+
+        with self.assertRaisesRegex(ProviderError, "Increase max_tokens"):
+            client.complete([{"role": "user", "content": "hello"}])
 
     @patch("urllib.request.urlopen")
     def test_can_parse_streaming_content_with_reasoning_options(

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import unittest
 from unittest.mock import Mock, patch
 
@@ -10,6 +11,7 @@ from legal_doc_agent.agents import (
     PLANNER_ROLE,
     REASONER_ROLE,
     NvidiaAgentRouter,
+    load_agent_profiles_from_env,
 )
 from legal_doc_agent.config import NvidiaConfig
 
@@ -60,6 +62,28 @@ class AgentRouterTests(unittest.TestCase):
             {"enable_thinking": True},
         )
         self.assertEqual(fourth_payload["reasoning_budget"], 16384)
+
+    def test_role_profiles_read_project_dotenv_values(self) -> None:
+        dotenv_values = {
+            "NVIDIA_DRAFTER_MODEL": "dotenv-drafter",
+            "NVIDIA_DRAFTER_TEMPERATURE": "0.3",
+            "NVIDIA_DRAFTER_TOP_P": "0.7",
+            "NVIDIA_DRAFTER_MAX_TOKENS": "2048",
+            "NVIDIA_DRAFTER_THINKING": "false",
+        }
+
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch("legal_doc_agent.config._load_dotenv_values", return_value=dotenv_values),
+        ):
+            profiles = load_agent_profiles_from_env()
+
+        drafter = profiles[DRAFTER_ROLE]
+        self.assertEqual(drafter.model, "dotenv-drafter")
+        self.assertEqual(drafter.temperature, 0.3)
+        self.assertEqual(drafter.top_p, 0.7)
+        self.assertEqual(drafter.max_tokens, 2048)
+        self.assertFalse(drafter.thinking)
 
 
 def _mock_response(payload: dict[str, object]) -> Mock:

@@ -8,12 +8,12 @@ The included default prompt is tuned for a Delaware C-Corp post-formation legal 
 
 ```powershell
 python -m pip install -e .
-$env:NVIDIA_API_KEY = "your_nvidia_api_key"
+Copy-Item .env.example .env
 ```
 
 The default NVIDIA OpenAI-compatible base URL is `https://integrate.api.nvidia.com/v1`. By default the harness uses a role-based multi-agent router; use `--single-agent` if you want one model for every job.
 
-Do not hardcode API keys in source files. Put them in your environment or a local `.env` file that remains ignored by git.
+Edit `.env` and set `NVIDIA_API_KEY`. The app reads process environment variables first, then falls back to the ignored local `.env` file. Do not hardcode API keys in source files.
 
 ## Generate a Word Document
 
@@ -185,6 +185,9 @@ the static UI cannot bypass Google sharing permissions by itself.
 ## Configuration
 
 Environment variables:
+
+Values can be set as process environment variables or in the ignored project
+`.env` file. Process environment variables take precedence over `.env`.
 
 - `NVIDIA_API_KEY`: required for real generation.
 - `NVIDIA_BASE_URL`: defaults to `https://integrate.api.nvidia.com/v1`.

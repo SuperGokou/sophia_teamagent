@@ -92,7 +92,15 @@ class NvidiaClient:
 
 def _parse_json_content(body: str) -> str:
     data: dict[str, Any] = json.loads(body)
-    return data["choices"][0]["message"]["content"]
+    choice = data["choices"][0]
+    message = choice["message"]
+    content = message.get("content") or ""
+    if not content and choice.get("finish_reason") == "length":
+        raise ProviderError(
+            "NVIDIA response was truncated before assistant content. "
+            "Increase max_tokens for this model."
+        )
+    return content
 
 
 def _parse_streaming_content(body: str) -> str:

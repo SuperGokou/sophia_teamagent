@@ -4,10 +4,25 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from pathlib import Path
 
 
 class ConfigurationError(RuntimeError):
     """Raised when required runtime configuration is missing."""
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_DOTENV_PATH = PROJECT_ROOT / ".env"
+_DOTENV_CACHE: dict[Path, dict[str, str]] = {}
+
+
+def env_value(name: str, default: str | None = None) -> str | None:
+    """Read config from process environment first, then project .env."""
+
+    value = os.getenv(name)
+    if value not in {None, ""}:
+        return value
+    return _load_dotenv_values().get(name, default)
 
 
 @dataclass(frozen=True)
@@ -42,41 +57,41 @@ class NvidiaConfig:
         reasoning_budget: int | None = None,
         stream: bool | None = None,
     ) -> "NvidiaConfig":
-        """Build configuration from explicit values first, then environment."""
+        """Build configuration from explicit values, environment, then .env."""
 
         timeout_value = timeout_seconds
         if timeout_value is None:
-            timeout_value = float(os.getenv("NVIDIA_TIMEOUT", "120"))
+            timeout_value = float(env_value("NVIDIA_TIMEOUT", "120") or "120")
 
         temperature_value = temperature
         if temperature_value is None:
-            temperature_value = float(os.getenv("NVIDIA_TEMPERATURE", "1"))
+            temperature_value = float(env_value("NVIDIA_TEMPERATURE", "1") or "1")
 
         top_p_value = top_p
         if top_p_value is None:
-            top_p_value = float(os.getenv("NVIDIA_TOP_P", "1"))
+            top_p_value = float(env_value("NVIDIA_TOP_P", "1") or "1")
 
         max_tokens_value = max_tokens
         if max_tokens_value is None:
-            max_tokens_value = int(os.getenv("NVIDIA_MAX_TOKENS", "4096"))
+            max_tokens_value = int(env_value("NVIDIA_MAX_TOKENS", "4096") or "4096")
 
         thinking_value = thinking
         if thinking_value is None:
             thinking_value = _parse_optional_bool(
-                os.getenv("NVIDIA_THINKING"),
+                env_value("NVIDIA_THINKING"),
                 "NVIDIA_THINKING",
             )
 
         enable_thinking_value = enable_thinking
         if enable_thinking_value is None:
             enable_thinking_value = _parse_optional_bool(
-                os.getenv("NVIDIA_ENABLE_THINKING"),
+                env_value("NVIDIA_ENABLE_THINKING"),
                 "NVIDIA_ENABLE_THINKING",
             )
 
         reasoning_budget_value = reasoning_budget
         if reasoning_budget_value is None:
-            raw_reasoning_budget = os.getenv("NVIDIA_REASONING_BUDGET")
+            raw_reasoning_budget = env_value("NVIDIA_REASONING_BUDGET")
             reasoning_budget_value = (
                 int(raw_reasoning_budget) if raw_reasoning_budget else None
             )
@@ -84,14 +99,14 @@ class NvidiaConfig:
         stream_value = stream
         if stream_value is None:
             stream_value = (
-                _parse_optional_bool(os.getenv("NVIDIA_STREAM"), "NVIDIA_STREAM")
+                _parse_optional_bool(env_value("NVIDIA_STREAM"), "NVIDIA_STREAM")
                 or False
             )
 
         return cls(
-            api_key=api_key or os.getenv("NVIDIA_API_KEY"),
-            base_url=(base_url or os.getenv("NVIDIA_BASE_URL") or cls.base_url).rstrip("/"),
-            model=model or os.getenv("NVIDIA_MODEL") or cls.model,
+            api_key=api_key or env_value("NVIDIA_API_KEY"),
+            base_url=(base_url or env_value("NVIDIA_BASE_URL") or cls.base_url).rstrip("/"),
+            model=model or env_value("NVIDIA_MODEL") or cls.model,
             timeout_seconds=timeout_value,
             temperature=temperature_value,
             top_p=top_p_value,
@@ -154,3 +169,49 @@ def _parse_optional_bool(value: str | None, name: str) -> bool | None:
     if normalized in {"0", "false", "no", "n", "off"}:
         return False
     raise ConfigurationError(f"Invalid boolean value for {name}: {value}")
+
+
+def _load_dotenv_values(path: Path = DEFAULT_DOTENV_PATH) -> dict[str, str]:
+    resolved = path.resolve()
+    if resolved in _DOTENV_CACHE:
+        return _DOTENV_CACHE[resolved]
+    try:
+        lines = resolved.read_text(encoding="utf-8").splitlines()
+    except FileNotFoundError:
+        values: dict[str, str] = {}
+        _DOTENV_CACHE[resolved] = values
+        return values
+
+    values = {}
+    for line in lines:
+        parsed = _parse_dotenv_line(line)
+        if parsed is None:
+            continue
+        key, value = parsed
+        values[key] = value
+    _DOTENV_CACHE[resolved] = values
+    return values
+
+
+def _parse_dotenv_line(line: str) -> tuple[str, str] | None:
+    stripped = line.strip()
+    if not stripped or stripped.startswith("#"):
+        return None
+    if stripped.startswith("export "):
+        stripped = stripped.removeprefix("export ").strip()
+    if "=" not in stripped:
+        return None
+    key, value = stripped.split("=", 1)
+    key = key.strip()
+    if not key:
+        return None
+    return key, _normalize_dotenv_value(value)
+
+
+def _normalize_dotenv_value(value: str) -> str:
+    stripped = value.strip()
+    if len(stripped) >= 2 and stripped[0] == stripped[-1] and stripped[0] in {"'", '"'}:
+        return stripped[1:-1]
+    if " #" in stripped:
+        stripped = stripped.split(" #", 1)[0].rstrip()
+    return stripped

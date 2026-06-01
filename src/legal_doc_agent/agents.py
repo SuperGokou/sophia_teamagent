@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 
-from legal_doc_agent.config import ConfigurationError, NvidiaConfig
+from legal_doc_agent.config import ConfigurationError, NvidiaConfig, env_value
 from legal_doc_agent.nvidia import NvidiaClient
 
 
@@ -160,21 +159,27 @@ def _profile_from_env(default: AgentProfile) -> AgentProfile:
     prefix = f"NVIDIA_{default.role.upper()}_"
     return AgentProfile(
         role=default.role,
-        model=os.getenv(f"{prefix}MODEL", default.model),
-        temperature=float(os.getenv(f"{prefix}TEMPERATURE", str(default.temperature))),
-        top_p=float(os.getenv(f"{prefix}TOP_P", str(default.top_p))),
-        max_tokens=int(os.getenv(f"{prefix}MAX_TOKENS", str(default.max_tokens))),
-        thinking=_parse_role_thinking(os.getenv(f"{prefix}THINKING"), default.thinking),
-        purpose=os.getenv(f"{prefix}PURPOSE", default.purpose),
+        model=env_value(f"{prefix}MODEL", default.model) or default.model,
+        temperature=float(
+            env_value(f"{prefix}TEMPERATURE", str(default.temperature))
+            or default.temperature
+        ),
+        top_p=float(env_value(f"{prefix}TOP_P", str(default.top_p)) or default.top_p),
+        max_tokens=int(
+            env_value(f"{prefix}MAX_TOKENS", str(default.max_tokens))
+            or default.max_tokens
+        ),
+        thinking=_parse_role_thinking(env_value(f"{prefix}THINKING"), default.thinking),
+        purpose=env_value(f"{prefix}PURPOSE", default.purpose) or default.purpose,
         enable_thinking=_parse_role_thinking(
-            os.getenv(f"{prefix}ENABLE_THINKING"),
+            env_value(f"{prefix}ENABLE_THINKING"),
             default.enable_thinking,
         ),
         reasoning_budget=_parse_optional_int(
-            os.getenv(f"{prefix}REASONING_BUDGET"),
+            env_value(f"{prefix}REASONING_BUDGET"),
             default.reasoning_budget,
         ),
-        stream=_parse_role_stream(os.getenv(f"{prefix}STREAM"), default.stream),
+        stream=_parse_role_stream(env_value(f"{prefix}STREAM"), default.stream),
     )
 
 
