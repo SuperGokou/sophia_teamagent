@@ -334,22 +334,24 @@ function updateTokenDisplay(ledger = readTokenLedger()) {
 
 function addTokenRecord(agent) {
   const estimate = tokenEstimates[agent.id] || { used: 0, saved: 0 };
+  const actualUsed = 0;
+  const localSaved = estimate.used + estimate.saved;
   const ledger = readTokenLedger();
   const entry = {
     at: new Date().toISOString(),
     conversation: summarizeBrief(),
     agent: agent.name,
-    model: agent.model,
-    used: estimate.used,
-    saved: estimate.saved,
+    model: `${agent.model} (local fallback, API not called)`,
+    used: actualUsed,
+    saved: localSaved,
   };
   const nextLedger = {
     ...ledger,
-    used: ledger.used + estimate.used,
-    saved: ledger.saved + estimate.saved,
+    used: ledger.used + actualUsed,
+    saved: ledger.saved + localSaved,
     entries: [...ledger.entries, entry].slice(-80),
   };
-  currentRunTokens += estimate.used;
+  currentRunTokens += actualUsed;
   writeCurrentRunTokens(currentRunTokens);
   writeTokenLedger(nextLedger);
   updateTokenDisplay(nextLedger);
@@ -911,6 +913,17 @@ function summarizeBrief() {
   return firstContentLine.length > 18 ? `${firstContentLine.slice(0, 18)}...` : firstContentLine;
 }
 
+function summarizeGeneratedDraft() {
+  const firstContentLine = generatedDraftText
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find(Boolean);
+  if (!firstContentLine) {
+    return "";
+  }
+  return firstContentLine.length > 48 ? firstContentLine.slice(0, 48) : firstContentLine;
+}
+
 function updateConversationTitle(title, subtitle) {
   conversationRow.querySelector("strong").textContent = title;
   historyItem.querySelector("strong").textContent = title;
@@ -954,51 +967,98 @@ function inferLegalMatter(brief, fields) {
   const text = `${brief} ${Object.values(fields).join(" ")}`.toLowerCase();
   const candidates = [
     {
+      id: "corporate",
+      title: "DELAWARE C-CORP POST-FORMATION LEGAL DOCUMENTATION PACKAGE",
+      keywords: [
+        "delaware",
+        "c-corp",
+        "c-corporation",
+        "corporation",
+        "post-formation",
+        "post formation",
+        "certificate of incorporation",
+        "founder",
+        "founder stock",
+        "founder vesting",
+        "equity",
+        "stock",
+        "bylaws",
+        "board consent",
+        "cap table",
+        "83(b)",
+        "registered agent",
+        "公司设立",
+        "股权",
+        "董事会",
+      ],
+      strongKeywords: [
+        "delaware c-corporation",
+        "delaware c-corp",
+        "post-formation legal documentation package",
+        "certificate of incorporation has already been filed",
+        "founder stock purchase agreement",
+        "initial board consent",
+        "83(b) election",
+      ],
+    },
+    {
       id: "nda",
       title: "CONFIDENTIALITY / NDA DRAFT",
       keywords: ["nda", "confidential", "non-disclosure", "保密", "保密协议", "nda协议"],
+      strongKeywords: ["non-disclosure agreement", "mutual confidentiality", "receiving party", "disclosing party"],
     },
     {
       id: "demand-letter",
       title: "LEGAL DEMAND LETTER DRAFT",
       keywords: ["demand letter", "breach", "违约", "催款", "律师函", "索赔", "欠款", "notice of breach"],
+      strongKeywords: ["notice of breach", "demand letter", "cure deadline"],
     },
     {
       id: "service-agreement",
       title: "SERVICES / CONTRACTOR AGREEMENT DRAFT",
       keywords: ["service agreement", "contractor", "consulting", "vendor", "服务合同", "外包", "顾问", "独立承包"],
+      strongKeywords: ["scope of services", "independent contractor", "master services agreement"],
     },
     {
       id: "employment",
       title: "EMPLOYMENT / OFFER DOCUMENT DRAFT",
       keywords: ["employment", "offer letter", "employee", "termination", "雇佣", "劳动", "入职", "解雇"],
+      strongKeywords: ["offer letter", "at-will", "start date", "compensation"],
     },
     {
       id: "privacy-terms",
       title: "SAAS TERMS / PRIVACY PACKAGE DRAFT",
       keywords: ["terms of service", "privacy", "saas", "subscription", "用户协议", "隐私", "服务条款"],
+      strongKeywords: ["terms of service", "privacy policy", "data processing addendum", "acceptable use policy"],
     },
     {
       id: "lease",
       title: "LEASE / REAL ESTATE DOCUMENT DRAFT",
       keywords: ["lease", "tenant", "landlord", "rent", "租赁", "房东", "租客", "租金"],
+      strongKeywords: ["lease agreement", "landlord", "tenant"],
     },
     {
       id: "litigation",
       title: "LITIGATION PLEADING / CASE WORKUP DRAFT",
       keywords: ["complaint", "motion", "lawsuit", "court", "pleading", "起诉", "诉讼", "法院", "答辩"],
-    },
-    {
-      id: "corporate",
-      title: "CORPORATE POST-FORMATION PACKAGE DRAFT",
-      keywords: ["delaware", "c-corp", "corporation", "founder", "equity", "stock", "bylaws", "公司设立", "股权", "董事会"],
+      strongKeywords: ["civil complaint", "motion to", "court filing"],
     },
   ];
 
-  const found = candidates.find((candidate) => (
-    candidate.keywords.some((keyword) => text.includes(keyword))
-  ));
-  return found || {
+  const scored = candidates
+    .map((candidate) => {
+      const weakScore = candidate.keywords.filter((keyword) => text.includes(keyword)).length;
+      const strongScore = (candidate.strongKeywords || [])
+        .filter((keyword) => text.includes(keyword))
+        .length * 4;
+      return {
+        candidate,
+        score: weakScore + strongScore,
+      };
+    })
+    .sort((left, right) => right.score - left.score);
+
+  return scored[0]?.score > 0 ? scored[0].candidate : {
     id: "general",
     title: "CUSTOM LEGAL DOCUMENT DRAFT",
     keywords: [],
@@ -1477,7 +1537,7 @@ function downloadLocalDocx() {
     completeDraftOutput();
   }
 
-  const fileName = `${safeFileName(summarizeBrief())}.docx`;
+  const fileName = `${safeFileName(summarizeGeneratedDraft() || summarizeBrief())}.docx`;
   const blob = createLocalDocxBlob(generatedDraftText);
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);

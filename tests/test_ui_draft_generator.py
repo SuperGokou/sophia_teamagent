@@ -29,6 +29,7 @@ class UiDraftGeneratorTests(unittest.TestCase):
               nda: "Need an NDA for Alpha AI and Beta Labs. Mutual confidentiality, term 3 years, California law.",
               demand: "请生成一封律师函：客户欠款 50000 美元，合同违约，需要 10 天内付款。",
               corporate: "Company legal name: Example AI Inc\nDelaware file number: 123456\nFounder 1: A\nFounder 2: B\nOwnership: 50/50",
+              corporateSpec: "You are a top-tier Silicon Valley startup attorney and Delaware corporate counsel.\nYour task is to generate a complete institutional-grade post-formation legal documentation package for a Delaware C-Corporation startup.\nThe Certificate of Incorporation has already been filed.\nRequired documents include Corporate Bylaws, Initial Board Consent, Founder Stock Purchase Agreements, Stock Ledger, Cap Table, IP Assignment, and 83(b) Election Instructions.\nInclude confidential information and invention assignment language where appropriate.",
             };
             const result = {};
             for (const [name, brief] of Object.entries(cases)) {
@@ -60,6 +61,16 @@ class UiDraftGeneratorTests(unittest.TestCase):
         self.assertEqual(result["demand"]["matterLine"], "Detected matter type: demand-letter")
         self.assertIn("欠款 50000", result["demand"]["draft"])
 
-        self.assertEqual(result["corporate"]["firstLine"], "CORPORATE POST-FORMATION PACKAGE DRAFT")
+        self.assertEqual(
+            result["corporate"]["firstLine"],
+            "DELAWARE C-CORP POST-FORMATION LEGAL DOCUMENTATION PACKAGE",
+        )
         self.assertEqual(result["corporate"]["matterLine"], "Detected matter type: corporate")
         self.assertIn("Example AI Inc", result["corporate"]["draft"])
+
+        self.assertEqual(
+            result["corporateSpec"]["firstLine"],
+            "DELAWARE C-CORP POST-FORMATION LEGAL DOCUMENTATION PACKAGE",
+        )
+        self.assertEqual(result["corporateSpec"]["matterLine"], "Detected matter type: corporate")
+        self.assertIn("post-formation legal documentation package", result["corporateSpec"]["draft"])
