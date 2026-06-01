@@ -155,6 +155,8 @@ const tokenUsedNote = document.querySelector("#tokenUsedNote");
 const tokenSavedNote = document.querySelector("#tokenSavedNote");
 const progressValue = document.querySelector("#progressValue");
 const progressBar = document.querySelector("#progressBar");
+const conversationProgress = document.querySelector("#conversationProgress");
+const conversationProgressBar = document.querySelector("#conversationProgressBar");
 const conversationTokenLabel = document.querySelector("#conversationTokenLabel");
 const briefInput = document.querySelector("#briefInput");
 const sendToAgentButton = document.querySelector("#sendToAgentButton");
@@ -666,6 +668,8 @@ function setProgress(value) {
   const clamped = Math.max(0, Math.min(100, value));
   progressValue.textContent = `${clamped}%`;
   progressBar.style.width = `${clamped}%`;
+  conversationProgress.setAttribute("aria-valuenow", String(clamped));
+  conversationProgressBar.style.width = `${clamped}%`;
 }
 
 function extractGoogleDocIdFromUrl(value) {

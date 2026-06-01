@@ -1801,6 +1801,24 @@ svg {
   text-align: right;
 }
 
+.conversation-progress {
+  height: 5px;
+  margin: -2px 40px 0 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(223, 196, 150, 0.48);
+}
+
+.conversation-progress span {
+  display: block;
+  width: 18%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--mint), #45a7f5);
+  box-shadow: 0 0 10px rgba(65, 208, 184, 0.32);
+  transition: width 0.32s ease;
+}
+
 .conversation-delete {
   position: absolute;
   z-index: 2;

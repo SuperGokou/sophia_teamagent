@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Sophia TeamAgent</title>
     <link rel="icon" type="image/jpeg" href="./assets/site-logo.jpg" />
-    <link rel="stylesheet" href="./styles.css?v=20260531-backend-generation" />
+    <link rel="stylesheet" href="./styles.css?v=20260601-conversation-progress" />
   </head>
   <body>
     <div class="app-shell">
@@ -247,6 +247,9 @@ Special notes:</textarea>
                 <span>02:52 05/31</span>
               </div>
             </button>
+            <div class="conversation-progress" id="conversationProgress" role="progressbar" aria-label="处理进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="18">
+              <span id="conversationProgressBar"></span>
+            </div>
             <button class="conversation-delete" type="button" id="conversationDelete" aria-label="删除对话" title="删除对话">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M3 6h18M8 6V4h8v2m-9 0 1 15h8l1-15M10 10v7m4-7v7" />
@@ -474,6 +477,6 @@ Special notes:</textarea>
       </main>
     </div>
 
-    <script src="./app.js?v=20260531-backend-generation"></script>
+    <script src="./app.js?v=20260601-conversation-progress"></script>
   </body>
 </html>
