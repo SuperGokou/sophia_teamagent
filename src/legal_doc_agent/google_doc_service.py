@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable
 
-from legal_doc_agent.generation_service import (
+from legal_doc_agent.local_http import (
     DEFAULT_ALLOWED_ORIGINS,
-    _is_loopback_address,
-    _normalize_origin,
+    read_json_body,
+    request_allowed,
+    send_json,
 )
 from legal_doc_agent.google_docs import (
     GoogleDocPermissionError,
@@ -129,44 +129,22 @@ def _make_handler(service: GoogleDocLocalService) -> type[BaseHTTPRequestHandler
             print(f"{self.address_string()} - {format % args}")
 
         def _request_allowed(self, *, require_origin: bool) -> bool:
-            if not _is_loopback_address(str(self.client_address[0])):
-                return False
-            origin = self.headers.get("Origin")
-            if not origin:
-                return not require_origin
-            return _normalize_origin(origin) in service.allowed_origins
+            return request_allowed(
+                self,
+                allowed_origins=service.allowed_origins,
+                require_origin=require_origin,
+            )
 
         def _read_json(self) -> dict[str, Any]:
-            try:
-                content_length = int(self.headers.get("Content-Length", "0"))
-            except ValueError as exc:
-                raise ValueError("Invalid Content-Length.") from exc
-            if content_length <= 0:
-                return {}
-            if content_length > MAX_REQUEST_BYTES:
-                raise ValueError("Request body is too large.")
-            raw_body = self.rfile.read(content_length)
-            try:
-                data = json.loads(raw_body.decode("utf-8"))
-            except json.JSONDecodeError as exc:
-                raise ValueError("Request body must be JSON.") from exc
-            if not isinstance(data, dict):
-                raise ValueError("Request body must be a JSON object.")
-            return data
+            return read_json_body(self, max_request_bytes=MAX_REQUEST_BYTES)
 
         def _send_json(self, payload: dict[str, Any], *, status: int = 200) -> None:
-            body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-            self.send_response(status)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.send_header("Content-Length", str(len(body)))
-            origin = self.headers.get("Origin")
-            normalized_origin = _normalize_origin(origin) if origin else ""
-            if normalized_origin in service.allowed_origins:
-                self.send_header("Access-Control-Allow-Origin", normalized_origin)
-            self.send_header("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
-            self.send_header("Access-Control-Allow-Headers", "Content-Type")
-            self.end_headers()
-            self.wfile.write(body)
+            send_json(
+                self,
+                payload,
+                allowed_origins=service.allowed_origins,
+                status=status,
+            )
 
     return GoogleDocRequestHandler
 

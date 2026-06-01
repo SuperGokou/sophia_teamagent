@@ -8,10 +8,9 @@ import unittest
 
 from legal_doc_agent.generation_service import (
     LegalGenerationLocalService,
-    _is_loopback_address,
     _make_handler,
-    _normalize_origin,
 )
+from legal_doc_agent.local_http import is_loopback_address, normalize_origin
 
 
 class LegalGenerationLocalServiceTests(unittest.TestCase):
@@ -38,12 +37,12 @@ class LegalGenerationLocalServiceTests(unittest.TestCase):
 
     def test_normalize_origin_strips_path_and_rejects_invalid_values(self) -> None:
         self.assertEqual(
-            _normalize_origin("http://localhost:5173/some/path"),
+            normalize_origin("http://localhost:5173/some/path"),
             "http://localhost:5173",
         )
-        self.assertEqual(_normalize_origin("not a url"), "")
-        self.assertTrue(_is_loopback_address("127.0.0.1"))
-        self.assertFalse(_is_loopback_address("192.168.1.10"))
+        self.assertEqual(normalize_origin("not a url"), "")
+        self.assertTrue(is_loopback_address("127.0.0.1"))
+        self.assertFalse(is_loopback_address("192.168.1.10"))
 
     def test_post_requires_loopback_and_allowed_origin(self) -> None:
         service = LegalGenerationLocalService()

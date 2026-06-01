@@ -2,30 +2,27 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import asdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from ipaddress import ip_address
 from pathlib import Path
 from typing import Any, Callable
-from urllib.parse import urlparse
 from uuid import uuid4
 
 from legal_doc_agent.agents import NvidiaAgentRouter
 from legal_doc_agent.config import ConfigurationError, NvidiaConfig
 from legal_doc_agent.harness import LegalDocumentAgent
+from legal_doc_agent.local_http import (
+    DEFAULT_ALLOWED_ORIGINS,
+    read_json_body,
+    request_allowed,
+    send_json,
+)
 
 
 MAX_REQUEST_BYTES = 1_000_000
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_SPEC_PATH = PROJECT_ROOT / "prompts" / "delaware_c_corp_post_formation.txt"
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "outputs" / "web"
-DEFAULT_ALLOWED_ORIGINS = frozenset(
-    {
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    }
-)
 
 
 class LegalGenerationLocalService:
@@ -167,44 +164,22 @@ def _make_handler(service: LegalGenerationLocalService) -> type[BaseHTTPRequestH
             print(f"{self.address_string()} - {format % args}")
 
         def _request_allowed(self, *, require_origin: bool) -> bool:
-            if not _is_loopback_address(str(self.client_address[0])):
-                return False
-            origin = self.headers.get("Origin")
-            if not origin:
-                return not require_origin
-            return _normalize_origin(origin) in service.allowed_origins
+            return request_allowed(
+                self,
+                allowed_origins=service.allowed_origins,
+                require_origin=require_origin,
+            )
 
         def _read_json(self) -> dict[str, Any]:
-            try:
-                content_length = int(self.headers.get("Content-Length", "0"))
-            except ValueError as exc:
-                raise ValueError("Invalid Content-Length.") from exc
-            if content_length <= 0:
-                return {}
-            if content_length > MAX_REQUEST_BYTES:
-                raise ValueError("Request body is too large.")
-            raw_body = self.rfile.read(content_length)
-            try:
-                data = json.loads(raw_body.decode("utf-8"))
-            except json.JSONDecodeError as exc:
-                raise ValueError("Request body must be JSON.") from exc
-            if not isinstance(data, dict):
-                raise ValueError("Request body must be a JSON object.")
-            return data
+            return read_json_body(self, max_request_bytes=MAX_REQUEST_BYTES)
 
         def _send_json(self, payload: dict[str, Any], *, status: int = 200) -> None:
-            body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-            self.send_response(status)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.send_header("Content-Length", str(len(body)))
-            origin = self.headers.get("Origin")
-            normalized_origin = _normalize_origin(origin) if origin else ""
-            if normalized_origin in service.allowed_origins:
-                self.send_header("Access-Control-Allow-Origin", normalized_origin)
-            self.send_header("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
-            self.send_header("Access-Control-Allow-Headers", "Content-Type")
-            self.end_headers()
-            self.wfile.write(body)
+            send_json(
+                self,
+                payload,
+                allowed_origins=service.allowed_origins,
+                status=status,
+            )
 
     return LegalGenerationRequestHandler
 
@@ -214,26 +189,6 @@ def _required_string(payload: dict[str, Any], key: str) -> str:
     if not value:
         raise ValueError(f"Missing required field: {key}.")
     return value
-
-
-def _normalize_origin(origin: str | None) -> str:
-    if not origin:
-        return ""
-    parsed = urlparse(origin.strip())
-    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
-        return ""
-    host = parsed.hostname
-    port = f":{parsed.port}" if parsed.port else ""
-    return f"{parsed.scheme}://{host}{port}"
-
-
-def _is_loopback_address(address: str) -> bool:
-    if address in {"localhost", "127.0.0.1", "::1"}:
-        return True
-    try:
-        return ip_address(address).is_loopback
-    except ValueError:
-        return False
 
 
 def _read_artifact_markdown(artifact_dir: Path) -> str:
