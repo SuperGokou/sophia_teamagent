@@ -1359,7 +1359,7 @@ svg {
   width: min(1040px, calc(100% - 28px));
   display: grid;
   grid-template-columns: minmax(280px, 1fr) minmax(280px, 0.78fr);
-  align-items: end;
+  align-items: start;
   gap: 12px;
   padding: 14px;
   border: 1px solid rgba(201, 169, 116, 0.74);
@@ -1404,7 +1404,7 @@ svg {
 .draft-field textarea {
   height: 96px;
   resize: vertical;
-  padding: 10px 154px 42px 12px;
+  padding: 10px 12px;
   line-height: 1.45;
 }
 
@@ -1413,10 +1413,21 @@ svg {
   padding: 0 12px;
 }
 
+.draft-submit-row {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.draft-submit-row span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .send-agent-button {
-  position: absolute;
-  right: 12px;
-  bottom: 12px;
   height: 34px;
   display: inline-flex;
   align-items: center;
@@ -1442,8 +1453,15 @@ svg {
   height: 16px;
 }
 
+.delivery-panel {
+  min-width: 0;
+  display: grid;
+  align-self: stretch;
+  grid-template-rows: auto auto 1fr;
+  gap: 9px;
+}
+
 .draft-actions {
-  grid-column: 2;
   display: grid;
   grid-template-columns: repeat(2, minmax(124px, 1fr));
   gap: 8px;
@@ -1498,8 +1516,40 @@ svg {
 }
 
 .bridge-status {
-  grid-column: 2;
   align-self: start;
+}
+
+.draft-output {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(65, 208, 184, 0.42);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.66);
+}
+
+.draft-output strong,
+.draft-output span {
+  display: block;
+}
+
+.draft-output strong {
+  font-size: 13px;
+}
+
+.draft-output span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.draft-output .secondary-action {
+  width: auto;
+  min-width: 96px;
+  flex: 0 0 auto;
 }
 
 .doc-status.is-ok,
@@ -1580,7 +1630,7 @@ svg {
 .metrics {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 26px;
+  gap: 22px;
   padding-top: 38px;
 }
 
@@ -1607,12 +1657,12 @@ svg {
   display: flex;
   align-items: baseline;
   gap: 4px;
-  height: 54px;
+  height: 52px;
   margin-top: 0;
-  padding-top: 4px;
+  padding-top: 8px;
   padding-bottom: 0;
   border-bottom: 3px solid #ead8b5;
-  font-weight: 500;
+  font-weight: 400;
   white-space: nowrap;
 }
 
@@ -1630,16 +1680,16 @@ svg {
 
 .metrics b {
   min-width: 18px;
-  font-size: 21px;
-  font-weight: 500;
+  font-size: 19px;
+  font-weight: 400;
   line-height: 1;
 }
 
 .metrics em {
   color: #b9bbbf;
-  font-size: 18px;
+  font-size: 15px;
   font-style: normal;
-  font-weight: 500;
+  font-weight: 400;
   line-height: 1;
 }
 
@@ -2126,7 +2176,7 @@ textarea:focus-visible {
   }
 
   .office {
-    min-height: 720px;
+    min-height: 960px;
   }
 
   .office-title {
@@ -2191,8 +2241,21 @@ textarea:focus-visible {
     padding: 0;
   }
 
+  .draft-submit-row > span {
+    font-size: 11px;
+  }
+
   .send-agent-button span {
     display: none;
+  }
+
+  .draft-output {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .draft-output .secondary-action {
+    width: 100%;
   }
 
   .agent-node.lead {

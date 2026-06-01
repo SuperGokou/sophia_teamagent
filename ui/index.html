@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Sophia TeamAgent</title>
     <link rel="icon" type="image/jpeg" href="./assets/site-logo.jpg" />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=20260531-bridge-output-2" />
   </head>
   <body>
     <div class="app-shell">
@@ -155,31 +155,43 @@ Founder 2:
 Ownership: 50/50
 Business: AI agents, staffing automation, SaaS workflow products
 Special notes:</textarea>
-            <button class="send-agent-button" type="button" id="sendToAgentButton" title="发送给 Agent（Ctrl+Enter）" aria-label="发送给 Agent">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
-              <span>发送给 Agent</span>
-            </button>
+            <div class="draft-submit-row">
+              <span>Ctrl + Enter 发送给 Agent</span>
+              <button class="send-agent-button" type="button" id="sendToAgentButton" title="发送给 Agent（Ctrl+Enter）" aria-label="发送给 Agent">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
+                <span>发送给 Agent</span>
+              </button>
+            </div>
           </div>
-          <label class="draft-field">
-            <span>Google Doc 编辑链接</span>
-            <input id="googleDocInput" type="url" placeholder="https://docs.google.com/document/d/.../edit" />
-          </label>
-          <div class="draft-actions">
-            <button class="primary-action" type="button" id="generateLegalButton">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
-              多 Agent 生成
-            </button>
-            <button class="secondary-action" type="button" id="googleDocCheckButton">检查编辑权限</button>
-            <button class="secondary-action" type="button" id="openGoogleDocButton">打开链接</button>
-            <button class="secondary-action" type="button" id="chromeMonitorButton">Chrome 监控编辑</button>
-            <button class="secondary-action" type="button" id="downloadDocxButton">本地 DOCX</button>
+          <div class="delivery-panel">
+            <label class="draft-field">
+              <span>Google Doc 编辑链接</span>
+              <input id="googleDocInput" type="url" placeholder="https://docs.google.com/document/d/.../edit" />
+            </label>
+            <div class="draft-actions">
+              <button class="primary-action" type="button" id="generateLegalButton">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
+                多 Agent 生成
+              </button>
+              <button class="secondary-action" type="button" id="googleDocCheckButton">检查编辑权限</button>
+              <button class="secondary-action" type="button" id="openGoogleDocButton">打开链接</button>
+              <button class="secondary-action" type="button" id="chromeMonitorButton">Chrome 监控编辑</button>
+              <button class="secondary-action" type="button" id="downloadDocxButton">本地 DOCX</button>
+            </div>
+            <p class="bridge-status" id="bridgeStatus" aria-live="polite">
+              有 Google Doc 链接时，多 Agent 生成会创建接管请求；真实写入需要 Chrome 插件或后端服务。
+            </p>
           </div>
           <p class="doc-status" id="googleDocStatus" aria-live="polite">
             可选：粘贴 Google Doc 链接。实际编辑前会校验 Editor 权限。
           </p>
-          <p class="bridge-status" id="bridgeStatus" aria-live="polite">
-            有 Google Doc 链接时，多 Agent 生成会创建接管请求；真实写入需要 Chrome 插件或后端服务。
-          </p>
+          <div class="draft-output" id="draftOutput" hidden>
+            <div>
+              <strong>已生成法律文书草稿</strong>
+              <span id="draftOutputMeta">等待 Reviewer 审核完成</span>
+            </div>
+            <button class="secondary-action" type="button" id="copyDraftButton">复制正文</button>
+          </div>
         </section>
       </main>
 
@@ -462,6 +474,6 @@ Special notes:</textarea>
       </main>
     </div>
 
-    <script src="./app.js"></script>
+    <script src="./app.js?v=20260531-bridge-output-2"></script>
   </body>
 </html>

@@ -166,6 +166,9 @@ const chromeMonitorButton = document.querySelector("#chromeMonitorButton");
 const downloadDocxButton = document.querySelector("#downloadDocxButton");
 const bridgeStatus = document.querySelector("#bridgeStatus");
 const generateLegalButton = document.querySelector("#generateLegalButton");
+const draftOutput = document.querySelector("#draftOutput");
+const draftOutputMeta = document.querySelector("#draftOutputMeta");
+const copyDraftButton = document.querySelector("#copyDraftButton");
 const loginButton = document.querySelector("#loginButton");
 const loginPanel = document.querySelector("#loginPanel");
 const conversationEntry = document.querySelector("#conversationEntry");
@@ -208,6 +211,8 @@ let runTimer;
 let conversationDeleted = false;
 let activeSkillFilter = "all";
 let currentRunTokens = 0;
+let generatedDraftText = "";
+let lastBridgeRequestSaved = false;
 let automationTasks = [];
 const conversationDeletedKey = "sophia.conversation.deleted";
 const tokenLedgerKey = "sophia.tokenLedger.v1";
@@ -703,14 +708,21 @@ function openGoogleDocLink({ monitor = false } = {}) {
   const openedWindow = window.open(docUrl, "_blank", "noopener,noreferrer");
 
   if (monitor) {
-    writeChromeBridgeRequest(docUrl);
-    if (openedWindow) {
+    const saved = writeChromeBridgeRequest(docUrl);
+    if (openedWindow && saved) {
       setBridgeStatus(
         "ok",
         "已打开 Google Doc，并创建 Chrome 接管请求；插件连接后可检查 Editor 权限并执行法律版式整理。",
       );
-    } else {
+    } else if (openedWindow) {
+      setBridgeStatus(
+        "warn",
+        "已打开 Google Doc，但当前浏览器没有保存接管请求。请运行 Chrome bridge/后端 OAuth 服务，或先复制正文/下载 DOCX。",
+      );
+    } else if (saved) {
       setBridgeStatus("warn", "已创建 Chrome 接管请求，但浏览器拦截了新标签；请点“打开链接”。");
+    } else {
+      setBridgeStatus("warn", "无法创建 Chrome 接管请求。请运行 Chrome bridge/后端 OAuth 服务，或先复制正文/下载 DOCX。");
     }
   } else {
     setBridgeStatus(
@@ -742,8 +754,10 @@ function writeChromeBridgeRequest(docUrl) {
 
   try {
     window.localStorage.setItem(chromeBridgeRequestKey, JSON.stringify(request));
+    return true;
   } catch {
     setBridgeStatus("warn", "Google Doc 已打开，但当前浏览器不允许保存 Chrome 接管请求。");
+    return false;
   }
 }
 
@@ -751,17 +765,26 @@ function startGoogleDocHandoffForRun() {
   const docUrl = googleDocInput.value.trim();
   if (!docUrl) {
     setBridgeStatus("warn", "未填写 Google Doc 链接。本次只生成本地任务状态，可点“本地 DOCX”下载 Word。");
-    return;
+    lastBridgeRequestSaved = false;
+    return false;
   }
 
-  writeChromeBridgeRequest(docUrl);
+  const saved = writeChromeBridgeRequest(docUrl);
+  lastBridgeRequestSaved = saved;
   const openedWindow = window.open(docUrl, "_blank", "noopener,noreferrer");
-  setBridgeStatus(
-    openedWindow ? "ok" : "warn",
-    openedWindow
-      ? "已打开 Google Doc，并创建 Chrome 接管请求；生成完成后插件/后端可继续写入和排版。"
-      : "已创建 Chrome 接管请求，但新标签被拦截；Google Doc 不会自动显示变化，请点“打开链接”。",
-  );
+  if (openedWindow && saved) {
+    setBridgeStatus("ok", "已打开 Google Doc，并创建 Chrome 接管请求；生成完成后插件/后端可继续写入和排版。");
+  } else if (openedWindow) {
+    setBridgeStatus(
+      "warn",
+      "已打开 Google Doc，但当前浏览器没有保存接管请求。请运行 Chrome bridge/后端 OAuth 服务，或先复制正文/下载 DOCX。",
+    );
+  } else if (saved) {
+    setBridgeStatus("warn", "已创建 Chrome 接管请求，但新标签被拦截；Google Doc 不会自动显示变化，请点“打开链接”。");
+  } else {
+    setBridgeStatus("warn", "无法创建 Chrome 接管请求。请运行 Chrome bridge/后端 OAuth 服务，或先复制正文/下载 DOCX。");
+  }
+  return saved;
 }
 
 function summarizeBrief() {
@@ -783,6 +806,105 @@ function updateConversationTitle(title, subtitle) {
   }
 }
 
+function parseBriefFields(brief) {
+  return brief.split(/\r?\n/).reduce((fields, line) => {
+    const match = line.match(/^\s*([^:：]+)[:：]\s*(.*?)\s*$/);
+    if (!match) {
+      return fields;
+    }
+    fields[match[1].trim().toLowerCase()] = match[2].trim();
+    return fields;
+  }, {});
+}
+
+function briefField(fields, names, fallback = "To be provided") {
+  const keys = Array.isArray(names) ? names : [names];
+  const found = keys
+    .map((name) => fields[name.toLowerCase()])
+    .find((value) => value);
+  return found || fallback;
+}
+
+function buildGeneratedLegalDraft(brief) {
+  const fields = parseBriefFields(brief);
+  const companyName = briefField(fields, ["company legal name", "company name", "公司名称"]);
+  const delawareFileNumber = briefField(fields, ["delaware file number", "file number", "delaware 编号"]);
+  const founderOne = briefField(fields, ["founder 1", "founder one", "创始人1"]);
+  const founderTwo = briefField(fields, ["founder 2", "founder two", "创始人2"]);
+  const ownership = briefField(fields, ["ownership", "equity", "股权"], "50/50 or as separately confirmed");
+  const business = briefField(fields, ["business", "business model", "业务"], "AI/SaaS business activities to be confirmed");
+  const notes = briefField(fields, ["special notes", "notes", "备注"], "No additional notes provided");
+  const generatedAt = new Date().toLocaleString("en-US");
+
+  return [
+    "POST-FORMATION LEGAL DOCUMENT PACKAGE",
+    "",
+    "Prepared for counsel review. This draft is not legal advice and should be reviewed by qualified counsel before signature or filing.",
+    "",
+    "1. COMPANY SNAPSHOT",
+    `Legal name: ${companyName}`,
+    `Delaware file number: ${delawareFileNumber}`,
+    `Founder 1: ${founderOne}`,
+    `Founder 2: ${founderTwo}`,
+    `Ownership: ${ownership}`,
+    `Business: ${business}`,
+    `Special notes: ${notes}`,
+    "",
+    "2. REQUIRED DOCUMENT CHECKLIST",
+    "- Board consent approving initial corporate actions, officers, bank authorization, equity issuance workflow, and record book setup.",
+    "- Founder stock purchase agreements with vesting, assignment, tax, and signature blocks to be completed before execution.",
+    "- IP assignment and confidentiality agreements for each founder and early contributor.",
+    "- Cap table schedule reflecting ownership, share class, consideration, vesting status, and any unresolved blanks.",
+    "- 83(b) election reminders and mailing instructions for restricted stock recipients, if applicable.",
+    "",
+    "3. DRAFTING INSTRUCTIONS FOR THE AGENT TEAM",
+    "- Planner confirms missing company facts, required documents, and execution order.",
+    "- Retriever checks local RAG or official source notes before inserting legal citations.",
+    "- Drafter prepares complete templates and marks any unknown facts as bracketed blanks.",
+    "- Reviewer blocks completion if the document is internally inconsistent, unsupported by authority, or not ready for legal-document formatting.",
+    "",
+    "4. GOOGLE DOC / WORD LAYOUT STANDARD",
+    "- Use 1 inch margins, Times New Roman 11 pt, 115% line spacing, and consistent paragraph spacing.",
+    "- Keep signature blocks on readable page breaks and avoid orphaned headings.",
+    "- If editing Google Docs, confirm the link opens with Editor permission before automated layout changes.",
+    "",
+    "5. REVIEWER QUALITY GATE",
+    "Status: Ready for attorney review, not final execution.",
+    "Blocking items: Confirm missing names, addresses, share numbers, purchase price, vesting schedules, and tax-election deadlines.",
+    `Generated locally: ${generatedAt}`,
+  ].join("\n");
+}
+
+function completeDraftOutput() {
+  generatedDraftText = buildGeneratedLegalDraft(briefInput.value.trim());
+  draftOutput.hidden = false;
+  draftOutputMeta.textContent = googleDocInput.value.trim()
+    ? "Reviewer 完成；可复制正文或下载 DOCX，Google Doc 需 bridge/OAuth 写入"
+    : "Reviewer 完成；可复制正文或下载本地 DOCX";
+}
+
+async function copyGeneratedDraft() {
+  if (!generatedDraftText) {
+    generatedDraftText = buildGeneratedLegalDraft(briefInput.value.trim());
+  }
+
+  try {
+    await navigator.clipboard.writeText(generatedDraftText);
+    setBridgeStatus("ok", "已复制草稿正文，可粘贴到 Google Doc 或 Word。");
+  } catch {
+    const scratch = document.createElement("textarea");
+    scratch.value = generatedDraftText;
+    scratch.setAttribute("readonly", "");
+    scratch.style.position = "fixed";
+    scratch.style.opacity = "0";
+    document.body.appendChild(scratch);
+    scratch.select();
+    document.execCommand("copy");
+    scratch.remove();
+    setBridgeStatus("ok", "已复制草稿正文，可粘贴到 Google Doc 或 Word。");
+  }
+}
+
 function xmlEscape(value) {
   return String(value).replace(/[<>&"']/g, (char) => (
     {
@@ -800,14 +922,14 @@ function textParagraph(text, style = "") {
   return `<w:p>${styleXml}<w:r><w:t xml:space="preserve">${xmlEscape(text)}</w:t></w:r></w:p>`;
 }
 
-function buildLocalDocxDocumentXml(brief) {
-  const lines = brief
+function buildLocalDocxDocumentXml(draftText) {
+  const lines = draftText
     .split(/\r?\n/)
     .map((line) => line.trimEnd())
-    .filter(Boolean);
-  const briefParagraphs = lines.length
+    .filter((line) => line.trim());
+  const draftParagraphs = lines.length
     ? lines.map((line) => textParagraph(line)).join("")
-    : textParagraph("No brief content was provided.");
+    : textParagraph("No generated legal draft was provided.");
   const createdDate = new Date().toLocaleString("en-US");
 
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -817,8 +939,8 @@ function buildLocalDocxDocumentXml(brief) {
     ${textParagraph("Local Legal Document Draft", "Subtitle")}
     ${textParagraph("Drafting support output only. Review with qualified counsel before use.")}
     ${textParagraph(`Generated locally: ${createdDate}`)}
-    ${textParagraph("Client Brief", "Heading1")}
-    ${briefParagraphs}
+    ${textParagraph("Reviewed Draft", "Heading1")}
+    ${draftParagraphs}
     ${textParagraph("Agent Workflow", "Heading1")}
     ${textParagraph("Planner structures the checklist; Retriever verifies authority; Drafter assembles the package; Reviewer performs final quality checks.")}
     ${textParagraph("Google Doc Handoff", "Heading1")}
@@ -1072,8 +1194,12 @@ function downloadLocalDocx() {
     return;
   }
 
+  if (!generatedDraftText) {
+    completeDraftOutput();
+  }
+
   const fileName = `${safeFileName(summarizeBrief())}.docx`;
-  const blob = createLocalDocxBlob(brief);
+  const blob = createLocalDocxBlob(generatedDraftText);
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
   link.download = fileName;
@@ -1290,6 +1416,9 @@ function prepareNewConversation() {
   showOfficeView();
   restoreConversation();
   setConversationOpen(false);
+  generatedDraftText = "";
+  lastBridgeRequestSaved = false;
+  draftOutput.hidden = true;
   currentRunTokens = 0;
   writeCurrentRunTokens(currentRunTokens);
   officeStage.classList.remove("is-running");
@@ -1310,6 +1439,9 @@ function startLegalDraftRun() {
   showOfficeView();
   restoreConversation();
   setConversationOpen(false);
+  generatedDraftText = "";
+  lastBridgeRequestSaved = false;
+  draftOutput.hidden = true;
 
   if (!briefInput.value.trim()) {
     setGoogleDocStatus("error", "请先填写需要生成或填写的法律文书内容。");
@@ -1359,17 +1491,20 @@ function startLegalDraftRun() {
     renderTimeline(timeline.length);
     setProgress(100);
     updateConversationTitle(summarizeBrief(), "Reviewer 审核完成");
+    completeDraftOutput();
     const hasGoogleDoc = Boolean(googleDocInput.value.trim());
     setGoogleDocStatus(
       "ok",
       hasGoogleDoc
-        ? "最终 Reviewer 已完成质量门。Google Doc 接管请求已创建；需要 Chrome 插件或后端 OAuth 服务执行真实写入。"
+        ? "最终 Reviewer 已完成质量门。已生成草稿；Google Doc 写入需要 Chrome bridge/后端 OAuth，未运行时不会改变原文档。"
         : "最终 Reviewer 已完成质量门。未提供 Google Doc，可下载本地 DOCX 交付。",
     );
     setBridgeStatus(
-      hasGoogleDoc ? "warn" : "ok",
+      hasGoogleDoc && !lastBridgeRequestSaved ? "warn" : "ok",
       hasGoogleDoc
-        ? "如果 Google Doc 没有变化，说明 Chrome 接管插件或后端 Google Docs 服务尚未运行；可先点“本地 DOCX”。"
+        ? lastBridgeRequestSaved
+          ? "如果 Google Doc 没有变化，说明 Chrome 接管插件或后端 Google Docs 服务尚未运行；可先点“本地 DOCX”。"
+          : "Google Doc 没有被直接写入。请运行 Chrome bridge/后端 OAuth 服务，或使用“复制正文”“本地 DOCX”。"
         : "可下载本地 DOCX 交付。",
     );
   }, 900);
@@ -1383,6 +1518,7 @@ function sendBriefToAgent() {
 runButton.addEventListener("click", prepareNewConversation);
 generateLegalButton.addEventListener("click", startLegalDraftRun);
 sendToAgentButton.addEventListener("click", sendBriefToAgent);
+copyDraftButton.addEventListener("click", copyGeneratedDraft);
 briefInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
     event.preventDefault();
