@@ -219,7 +219,11 @@ const tokenLedgerKey = "sophia.tokenLedger.v1";
 const currentRunTokenKey = "sophia.currentRunTokens.v1";
 const automationTasksKey = "sophia.automation.tasks.v1";
 const chromeBridgeRequestKey = "sophia.chromeDocBridge.v1";
-const googleDocServiceWriteUrl = "http://127.0.0.1:8765/google-doc/write";
+const googleDocServiceBaseUrl = "http://127.0.0.1:8765";
+const googleDocServiceHealthUrl = `${googleDocServiceBaseUrl}/health`;
+const googleDocServiceWriteUrl = `${googleDocServiceBaseUrl}/google-doc/write`;
+const googleDocServiceHealthTimeoutMs = 3500;
+const googleDocServiceWriteTimeoutMs = 45000;
 const dailyTokenLimit = 10000000;
 const tokenEstimates = {
   planner: { used: 5200, saved: 680 },
@@ -700,22 +704,34 @@ function setBridgeStatus(kind, message) {
   bridgeStatus.textContent = message;
 }
 
-function postJson(url, payload) {
+function requestJson(url, { method = "GET", payload, timeoutMs = 15000 } = {}) {
   if (typeof fetch === "function") {
+    const controller = typeof AbortController === "function" ? new AbortController() : null;
+    const timeoutId = window.setTimeout(() => {
+      if (controller) {
+        controller.abort();
+      }
+    }, timeoutMs);
     return fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      method,
+      headers: payload ? { "Content-Type": "application/json" } : undefined,
+      body: payload ? JSON.stringify(payload) : undefined,
+      signal: controller ? controller.signal : undefined,
     }).then(async (response) => {
       const data = await response.json().catch(() => ({}));
       return { ok: response.ok && data.ok !== false, status: response.status, data };
+    }).finally(() => {
+      window.clearTimeout(timeoutId);
     });
   }
 
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
-    request.open("POST", url, true);
-    request.setRequestHeader("Content-Type", "application/json");
+    request.open(method, url, true);
+    request.timeout = timeoutMs;
+    if (payload) {
+      request.setRequestHeader("Content-Type", "application/json");
+    }
     request.onload = () => {
       let data = {};
       try {
@@ -730,8 +746,24 @@ function postJson(url, payload) {
       });
     };
     request.onerror = () => reject(new Error("network_error"));
-    request.send(JSON.stringify(payload));
+    request.ontimeout = () => reject(new Error("request_timeout"));
+    request.send(payload ? JSON.stringify(payload) : undefined);
   });
+}
+
+function postJson(url, payload, options = {}) {
+  return requestJson(url, { ...options, method: "POST", payload });
+}
+
+function getJson(url, options = {}) {
+  return requestJson(url, { ...options, method: "GET" });
+}
+
+function googleDocServiceFailureMessage(error) {
+  if (error?.name === "AbortError" || error?.message === "request_timeout") {
+    return "本机 Google OAuth 服务没有及时响应。请确认授权弹窗是否被挡住，或重启服务后再试。";
+  }
+  return "本机 Google OAuth 服务未运行。请启动 python -m legal_doc_agent google-doc serve --port 8765，或先复制正文/下载 DOCX。";
 }
 
 async function writeDraftToGoogleDocViaLocalService() {
@@ -742,9 +774,19 @@ async function writeDraftToGoogleDocViaLocalService() {
 
   setBridgeStatus("warn", "正在连接本机 Google OAuth 服务，准备写入 Google Doc...");
   try {
+    const health = await getJson(googleDocServiceHealthUrl, {
+      timeoutMs: googleDocServiceHealthTimeoutMs,
+    });
+    if (!health.ok) {
+      throw new Error("service_unhealthy");
+    }
+
+    setGoogleDocStatus("warn", "本机 Google OAuth 服务已连接，正在写入并排版 Google Doc...");
     const response = await postJson(googleDocServiceWriteUrl, {
       url: docUrl,
       draft: generatedDraftText,
+    }, {
+      timeoutMs: googleDocServiceWriteTimeoutMs,
     });
     if (!response.ok) {
       const message = response.data?.message || "Google Doc 写入失败。";
@@ -762,11 +804,10 @@ async function writeDraftToGoogleDocViaLocalService() {
     setBridgeStatus("ok", response.data?.message || "Google Doc 已完成写入和排版。");
     draftOutputMeta.textContent = "Reviewer 完成；Google Doc 已写入并排版，本地 DOCX 也可备用";
     return true;
-  } catch {
-    setBridgeStatus(
-      "warn",
-      "本机 Google OAuth 服务未运行。请启动 python -m legal_doc_agent google-doc serve --port 8765，或先复制正文/下载 DOCX。",
-    );
+  } catch (error) {
+    const message = googleDocServiceFailureMessage(error);
+    setGoogleDocStatus("error", message);
+    setBridgeStatus("error", message);
     return false;
   }
 }
