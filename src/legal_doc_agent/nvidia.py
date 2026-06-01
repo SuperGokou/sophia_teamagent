@@ -51,6 +51,10 @@ class NvidiaClient:
             payload["chat_template_kwargs"] = chat_template_kwargs
         if self.config.reasoning_budget is not None:
             payload["reasoning_budget"] = self.config.reasoning_budget
+        if self.config.frequency_penalty is not None:
+            payload["frequency_penalty"] = self.config.frequency_penalty
+        if self.config.presence_penalty is not None:
+            payload["presence_penalty"] = self.config.presence_penalty
         request = urllib.request.Request(
             f"{self.config.base_url}/chat/completions",
             data=json.dumps(payload).encode("utf-8"),

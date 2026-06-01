@@ -23,7 +23,7 @@ class AgentRouterTests(unittest.TestCase):
             {"choices": [{"message": {"content": "draft"}}]}
         )
         stream_response = _mock_stream_response("reasoned draft")
-        urlopen.side_effect = [response, response, response, stream_response, stream_response]
+        urlopen.side_effect = [response, response, response, stream_response, response]
         router = NvidiaAgentRouter(base_config=NvidiaConfig(api_key="key"))
         messages = [{"role": "user", "content": "hello"}]
 
@@ -40,10 +40,10 @@ class AgentRouterTests(unittest.TestCase):
         fourth_request = urlopen.call_args.args[0]
         fourth_payload = json.loads(fourth_request.data.decode("utf-8"))
 
-        self.assertEqual(first_payload["model"], "minimaxai/minimax-m2.7")
-        self.assertEqual(first_payload["temperature"], 1.0)
-        self.assertEqual(first_payload["top_p"], 0.95)
-        self.assertEqual(first_payload["max_tokens"], 8192)
+        self.assertEqual(first_payload["model"], "google/gemma-3n-e4b-it")
+        self.assertEqual(first_payload["temperature"], 0.2)
+        self.assertEqual(first_payload["top_p"], 0.7)
+        self.assertEqual(first_payload["max_tokens"], 2048)
         self.assertNotIn("chat_template_kwargs", first_payload)
         self.assertEqual(second_payload["model"], "deepseek-ai/deepseek-v4-pro")
         self.assertEqual(second_payload["top_p"], 0.95)
@@ -68,15 +68,13 @@ class AgentRouterTests(unittest.TestCase):
         router.complete(messages, role="reviewer")
         fifth_request = urlopen.call_args.args[0]
         fifth_payload = json.loads(fifth_request.data.decode("utf-8"))
-        self.assertEqual(fifth_payload["model"], "nvidia/nemotron-3-super-120b-a12b")
+        self.assertEqual(fifth_payload["model"], "google/gemma-3n-e4b-it")
         self.assertEqual(fifth_payload["temperature"], 0.2)
-        self.assertEqual(fifth_payload["max_tokens"], 8192)
-        self.assertTrue(fifth_payload["stream"])
-        self.assertEqual(
-            fifth_payload["chat_template_kwargs"],
-            {"enable_thinking": True},
-        )
-        self.assertEqual(fifth_payload["reasoning_budget"], 4096)
+        self.assertEqual(fifth_payload["top_p"], 0.7)
+        self.assertEqual(fifth_payload["max_tokens"], 2048)
+        self.assertFalse(fifth_payload["stream"])
+        self.assertNotIn("chat_template_kwargs", fifth_payload)
+        self.assertNotIn("reasoning_budget", fifth_payload)
 
     def test_role_profiles_read_project_dotenv_values(self) -> None:
         dotenv_values = {

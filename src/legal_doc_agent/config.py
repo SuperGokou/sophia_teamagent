@@ -31,7 +31,7 @@ class NvidiaConfig:
 
     api_key: str | None
     base_url: str = "https://integrate.api.nvidia.com/v1"
-    model: str = "minimaxai/minimax-m2.7"
+    model: str = "google/gemma-3n-e4b-it"
     timeout_seconds: float = 120.0
     temperature: float = 1.0
     top_p: float = 1.0
@@ -40,6 +40,8 @@ class NvidiaConfig:
     enable_thinking: bool | None = None
     reasoning_budget: int | None = None
     stream: bool = False
+    frequency_penalty: float | None = None
+    presence_penalty: float | None = None
 
     @classmethod
     def from_env(
@@ -56,6 +58,8 @@ class NvidiaConfig:
         enable_thinking: bool | None = None,
         reasoning_budget: int | None = None,
         stream: bool | None = None,
+        frequency_penalty: float | None = None,
+        presence_penalty: float | None = None,
     ) -> "NvidiaConfig":
         """Build configuration from explicit values, environment, then .env."""
 
@@ -103,6 +107,20 @@ class NvidiaConfig:
                 or False
             )
 
+        frequency_penalty_value = frequency_penalty
+        if frequency_penalty_value is None:
+            raw_frequency_penalty = env_value("NVIDIA_FREQUENCY_PENALTY")
+            frequency_penalty_value = (
+                float(raw_frequency_penalty) if raw_frequency_penalty else None
+            )
+
+        presence_penalty_value = presence_penalty
+        if presence_penalty_value is None:
+            raw_presence_penalty = env_value("NVIDIA_PRESENCE_PENALTY")
+            presence_penalty_value = (
+                float(raw_presence_penalty) if raw_presence_penalty else None
+            )
+
         return cls(
             api_key=api_key or env_value("NVIDIA_API_KEY"),
             base_url=(base_url or env_value("NVIDIA_BASE_URL") or cls.base_url).rstrip("/"),
@@ -115,6 +133,8 @@ class NvidiaConfig:
             enable_thinking=enable_thinking_value,
             reasoning_budget=reasoning_budget_value,
             stream=stream_value,
+            frequency_penalty=frequency_penalty_value,
+            presence_penalty=presence_penalty_value,
         )
 
     def require_api_key(self) -> str:
@@ -138,6 +158,8 @@ class NvidiaConfig:
         enable_thinking: bool | None = None,
         reasoning_budget: int | None = None,
         stream: bool | None = None,
+        frequency_penalty: float | None = None,
+        presence_penalty: float | None = None,
     ) -> "NvidiaConfig":
         """Return a role-specific config while preserving shared auth settings."""
 
@@ -157,6 +179,14 @@ class NvidiaConfig:
                 self.reasoning_budget if reasoning_budget is None else reasoning_budget
             ),
             stream=self.stream if stream is None else stream,
+            frequency_penalty=(
+                self.frequency_penalty
+                if frequency_penalty is None
+                else frequency_penalty
+            ),
+            presence_penalty=(
+                self.presence_penalty if presence_penalty is None else presence_penalty
+            ),
         )
 
 

@@ -35,10 +35,10 @@ class AgentProfile:
 DEFAULT_AGENT_PROFILES: dict[str, AgentProfile] = {
     PLANNER_ROLE: AgentProfile(
         role=PLANNER_ROLE,
-        model="minimaxai/minimax-m2.7",
-        temperature=1.0,
-        top_p=0.95,
-        max_tokens=8192,
+        model="google/gemma-3n-e4b-it",
+        temperature=0.2,
+        top_p=0.7,
+        max_tokens=2048,
         thinking=None,
         purpose="Plan sections, synthesize checklists, and keep output structure coherent.",
     ),
@@ -83,14 +83,11 @@ DEFAULT_AGENT_PROFILES: dict[str, AgentProfile] = {
     ),
     REVIEWER_ROLE: AgentProfile(
         role=REVIEWER_ROLE,
-        model="nvidia/nemotron-3-super-120b-a12b",
+        model="google/gemma-3n-e4b-it",
         temperature=0.2,
-        top_p=0.95,
-        max_tokens=8192,
+        top_p=0.7,
+        max_tokens=2048,
         thinking=None,
-        enable_thinking=True,
-        reasoning_budget=4096,
-        stream=True,
         purpose=(
             "Final legal quality gate for completeness, internal consistency, "
             "citation support, formatting readiness, and counsel-review risks."

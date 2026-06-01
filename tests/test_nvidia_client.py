@@ -25,6 +25,8 @@ class NvidiaClientTests(unittest.TestCase):
             "NVIDIA_TOP_P": "0.8",
             "NVIDIA_MAX_TOKENS": "1234",
             "NVIDIA_STREAM": "true",
+            "NVIDIA_FREQUENCY_PENALTY": "0.1",
+            "NVIDIA_PRESENCE_PENALTY": "0.2",
         }
 
         with (
@@ -40,6 +42,8 @@ class NvidiaClientTests(unittest.TestCase):
         self.assertEqual(config.top_p, 0.8)
         self.assertEqual(config.max_tokens, 1234)
         self.assertTrue(config.stream)
+        self.assertEqual(config.frequency_penalty, 0.1)
+        self.assertEqual(config.presence_penalty, 0.2)
         self.assertNotIn("NVIDIA_API_KEY", os.environ)
 
     def test_process_environment_overrides_dotenv_values(self) -> None:
@@ -65,7 +69,7 @@ class NvidiaClientTests(unittest.TestCase):
         urlopen.return_value = response
         config = NvidiaConfig(
             api_key="key",
-            model="minimaxai/minimax-m2.7",
+            model="google/gemma-3n-e4b-it",
             max_tokens=4096,
         )
         client = NvidiaClient(config)
@@ -79,7 +83,7 @@ class NvidiaClientTests(unittest.TestCase):
             "https://integrate.api.nvidia.com/v1/chat/completions",
         )
         payload = json.loads(request.data.decode("utf-8"))
-        self.assertEqual(payload["model"], "minimaxai/minimax-m2.7")
+        self.assertEqual(payload["model"], "google/gemma-3n-e4b-it")
         self.assertEqual(payload["messages"][0]["content"], "hello")
         self.assertEqual(payload["temperature"], 1.0)
         self.assertEqual(payload["top_p"], 1.0)
@@ -103,6 +107,30 @@ class NvidiaClientTests(unittest.TestCase):
         request = urlopen.call_args.args[0]
         payload = json.loads(request.data.decode("utf-8"))
         self.assertEqual(payload["chat_template_kwargs"], {"thinking": False})
+
+    @patch("urllib.request.urlopen")
+    def test_can_send_openai_compatible_penalties(self, urlopen: Mock) -> None:
+        response = Mock()
+        response.read.return_value = json.dumps(
+            {"choices": [{"message": {"content": "draft"}}]}
+        ).encode("utf-8")
+        response.__enter__ = Mock(return_value=response)
+        response.__exit__ = Mock(return_value=False)
+        urlopen.return_value = response
+        client = NvidiaClient(
+            NvidiaConfig(
+                api_key="key",
+                frequency_penalty=0.0,
+                presence_penalty=0.0,
+            )
+        )
+
+        client.complete([{"role": "user", "content": "hello"}])
+
+        request = urlopen.call_args.args[0]
+        payload = json.loads(request.data.decode("utf-8"))
+        self.assertEqual(payload["frequency_penalty"], 0.0)
+        self.assertEqual(payload["presence_penalty"], 0.0)
 
     @patch("urllib.request.urlopen")
     def test_reports_truncated_reasoning_only_response(self, urlopen: Mock) -> None:
