@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from types import SimpleNamespace
 
-from legal_doc_agent.google_doc_service import GoogleDocLocalService
+from legal_doc_agent.google_doc_service import GoogleDocLocalService, _make_handler
 
 
 class _FakeFormatter:
@@ -54,6 +54,42 @@ class GoogleDocLocalServiceTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             service.check({})
+
+    def test_handler_rejects_untrusted_origins(self) -> None:
+        service = GoogleDocLocalService(_FakeFormatter())  # type: ignore[arg-type]
+        handler_type = _make_handler(service)
+        handler = object.__new__(handler_type)
+        handler.client_address = ("127.0.0.1", 12345)
+        handler.headers = {"Origin": "https://evil.example"}
+
+        self.assertFalse(handler._request_allowed(require_origin=True))
+
+    def test_handler_accepts_local_ui_origins(self) -> None:
+        service = GoogleDocLocalService(_FakeFormatter())  # type: ignore[arg-type]
+        handler_type = _make_handler(service)
+        handler = object.__new__(handler_type)
+        handler.client_address = ("127.0.0.1", 12345)
+        handler.headers = {"Origin": "http://localhost:5173"}
+
+        self.assertTrue(handler._request_allowed(require_origin=True))
+
+    def test_handler_rejects_missing_origin_for_post(self) -> None:
+        service = GoogleDocLocalService(_FakeFormatter())  # type: ignore[arg-type]
+        handler_type = _make_handler(service)
+        handler = object.__new__(handler_type)
+        handler.client_address = ("127.0.0.1", 12345)
+        handler.headers = {}
+
+        self.assertFalse(handler._request_allowed(require_origin=True))
+
+    def test_handler_rejects_non_loopback_clients(self) -> None:
+        service = GoogleDocLocalService(_FakeFormatter())  # type: ignore[arg-type]
+        handler_type = _make_handler(service)
+        handler = object.__new__(handler_type)
+        handler.client_address = ("192.168.1.10", 12345)
+        handler.headers = {"Origin": "http://localhost:5173"}
+
+        self.assertFalse(handler._request_allowed(require_origin=True))
 
 
 if __name__ == "__main__":

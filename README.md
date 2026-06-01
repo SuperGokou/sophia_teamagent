@@ -35,6 +35,16 @@ For an offline smoke test without calling NVIDIA:
 python -m legal_doc_agent --dry-run --brief-file input/company_brief.md --out outputs/dry_run.docx
 ```
 
+Run the local NVIDIA generation service used by the web UI:
+
+```powershell
+python -m legal_doc_agent serve --port 8766
+```
+
+The UI calls `POST http://127.0.0.1:8766/legal-doc/generate` before it enables
+copy, Google Doc write, or DOCX download. If this service is not running, the UI
+must fail visibly instead of downloading a browser-generated fallback summary.
+
 The role-based flow always runs a final `reviewer` quality gate after planning,
 analysis, reasoning, and drafting. The reviewer writes
 `final_reviewer_quality_gate.md` and the same report is appended to the final
@@ -97,8 +107,9 @@ When this service is running, the UI's `Multi Agent` flow will attempt to call:
 POST http://127.0.0.1:8765/google-doc/write
 ```
 
-If the service is not running, the UI still exposes `Copy draft` and local
-`.docx` download as fallbacks.
+If the service is not running, the UI still exposes the generated draft for
+copy/download only after the local NVIDIA generation service has already
+returned a real multi-agent draft.
 
 When editor access is confirmed, the formatter can apply a standard legal layout:
 1 inch margins, Times New Roman 11 pt body text, 115% line spacing, and consistent
@@ -161,7 +172,8 @@ The UI console includes three delivery paths:
 
 - Open a Google Doc edit link directly in a new browser tab.
 - Create a Chrome handoff request for a Google Docs editor/formatter bridge.
-- Generate a local `.docx` draft in the browser when cloud editing is not ready.
+- Download a local `.docx` only after the NVIDIA multi-agent service returns a
+  real reviewed draft.
 
 When a Google Doc edit link is present, the `Multi Agent` button also creates
 the Chrome handoff request immediately. The document will only be modified when

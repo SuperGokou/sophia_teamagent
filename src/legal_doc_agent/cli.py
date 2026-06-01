@@ -11,6 +11,11 @@ from legal_doc_agent.agents import NvidiaAgentRouter, load_agent_profiles_from_e
 from legal_doc_agent.config import ConfigurationError, NvidiaConfig
 from legal_doc_agent.nvidia import NvidiaClient, ProviderError
 from legal_doc_agent.harness import DryRunClient, LegalDocumentAgent
+from legal_doc_agent.generation_service import (
+    DEFAULT_OUTPUT_DIR as DEFAULT_GENERATION_OUTPUT_DIR,
+    DEFAULT_SPEC_PATH as DEFAULT_GENERATION_SPEC_PATH,
+    run_generation_service,
+)
 from legal_doc_agent.google_docs import (
     GoogleDocPermissionError,
     build_google_docs_formatter,
@@ -30,6 +35,8 @@ def main(argv: list[str] | None = None) -> int:
         return _kb_main(argv[1:])
     if argv and argv[0] == "google-doc":
         return _google_doc_main(argv[1:])
+    if argv and argv[0] == "serve":
+        return _serve_main(argv[1:])
 
     parser = _build_parser()
     args = parser.parse_args(argv)
@@ -353,6 +360,28 @@ def _load_google_doc_draft(args: argparse.Namespace) -> str:
     if not draft.strip():
         raise ValueError("Draft text is empty.")
     return draft.strip()
+
+
+def _serve_main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description="Run the local NVIDIA legal generation service.")
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=8766)
+    parser.add_argument("--spec", type=Path, default=DEFAULT_GENERATION_SPEC_PATH)
+    parser.add_argument("--output-dir", type=Path, default=DEFAULT_GENERATION_OUTPUT_DIR)
+    parser.add_argument("--base-url", help="NVIDIA-compatible base URL.")
+    args = parser.parse_args(argv)
+    try:
+        run_generation_service(
+            host=args.host,
+            port=args.port,
+            spec_path=args.spec,
+            output_dir=args.output_dir,
+            base_url=args.base_url,
+        )
+    except (OSError, ValueError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    return 0
 
 
 def _build_kb_parser() -> argparse.ArgumentParser:

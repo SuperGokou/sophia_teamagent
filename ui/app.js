@@ -212,18 +212,26 @@ let conversationDeleted = false;
 let activeSkillFilter = "all";
 let currentRunTokens = 0;
 let generatedDraftText = "";
+let generatedDraftSource = "";
 let lastBridgeRequestSaved = false;
+let activeRunId = 0;
 let automationTasks = [];
 const conversationDeletedKey = "sophia.conversation.deleted";
 const tokenLedgerKey = "sophia.tokenLedger.v1";
 const currentRunTokenKey = "sophia.currentRunTokens.v1";
 const automationTasksKey = "sophia.automation.tasks.v1";
 const chromeBridgeRequestKey = "sophia.chromeDocBridge.v1";
+const chromeBridgeRequestTtlMs = 10 * 60 * 1000;
 const googleDocServiceBaseUrl = "http://127.0.0.1:8765";
 const googleDocServiceHealthUrl = `${googleDocServiceBaseUrl}/health`;
 const googleDocServiceWriteUrl = `${googleDocServiceBaseUrl}/google-doc/write`;
 const googleDocServiceHealthTimeoutMs = 3500;
 const googleDocServiceWriteTimeoutMs = 45000;
+const generationServiceBaseUrl = "http://127.0.0.1:8766";
+const generationServiceHealthUrl = `${generationServiceBaseUrl}/health`;
+const generationServiceGenerateUrl = `${generationServiceBaseUrl}/legal-doc/generate`;
+const generationServiceHealthTimeoutMs = 3500;
+const generationServiceGenerateTimeoutMs = 10 * 60 * 1000;
 const dailyTokenLimit = 10000000;
 const tokenEstimates = {
   planner: { used: 5200, saved: 680 },
@@ -768,9 +776,41 @@ function googleDocServiceFailureMessage(error) {
   return "本机 Google OAuth 服务未运行。请启动 python -m legal_doc_agent google-doc serve --port 8765，或先复制正文/下载 DOCX。";
 }
 
-async function writeDraftToGoogleDocViaLocalService() {
-  const docUrl = googleDocInput.value.trim();
-  if (!docUrl || !generatedDraftText) {
+function generationServiceFailureMessage(error) {
+  if (error?.name === "AbortError" || error?.message === "request_timeout") {
+    return "本机 NVIDIA 多 Agent 生成服务超时。请查看服务终端；不要下载本地 fallback。";
+  }
+  return "本机 NVIDIA 多 Agent 生成服务未运行。请启动 python -m legal_doc_agent serve --port 8766；未生成真实文书前不会下载 DOCX。";
+}
+
+async function requestBackendLegalDraft(brief) {
+  const health = await getJson(generationServiceHealthUrl, {
+    timeoutMs: generationServiceHealthTimeoutMs,
+  });
+  if (!health.ok) {
+    throw new Error("generation_service_unhealthy");
+  }
+
+  const response = await postJson(generationServiceGenerateUrl, {
+    brief,
+  }, {
+    timeoutMs: generationServiceGenerateTimeoutMs,
+  });
+  if (!response.ok) {
+    const message = response.data?.message || "NVIDIA 多 Agent 生成失败。";
+    const error = new Error(message);
+    error.status = response.status;
+    throw error;
+  }
+  const draft = String(response.data?.draft || "").trim();
+  if (!draft) {
+    throw new Error("NVIDIA 多 Agent 后端没有返回文书正文。");
+  }
+  return response.data;
+}
+
+async function writeDraftToGoogleDocViaLocalService({ docUrl, draft, runId } = {}) {
+  if (!docUrl || !draft || runId !== activeRunId) {
     return false;
   }
 
@@ -784,12 +824,18 @@ async function writeDraftToGoogleDocViaLocalService() {
     }
 
     setGoogleDocStatus("warn", "本机 Google OAuth 服务已连接，正在写入并排版 Google Doc...");
+    if (runId !== activeRunId) {
+      return false;
+    }
     const response = await postJson(googleDocServiceWriteUrl, {
       url: docUrl,
-      draft: generatedDraftText,
+      draft,
     }, {
       timeoutMs: googleDocServiceWriteTimeoutMs,
     });
+    if (runId !== activeRunId) {
+      return false;
+    }
     if (!response.ok) {
       const message = response.data?.message || "Google Doc 写入失败。";
       setGoogleDocStatus("error", message);
@@ -802,6 +848,7 @@ async function writeDraftToGoogleDocViaLocalService() {
       return false;
     }
 
+    clearChromeBridgeRequest();
     setGoogleDocStatus("ok", "Google Doc 已写入草稿，并完成标准法律文书版式。");
     setBridgeStatus("ok", response.data?.message || "Google Doc 已完成写入和排版。");
     draftOutputMeta.textContent = "Reviewer 完成；Google Doc 已写入并排版，本地 DOCX 也可备用";
@@ -823,7 +870,7 @@ function openGoogleDocLink({ monitor = false } = {}) {
   const openedWindow = window.open(docUrl, "_blank", "noopener,noreferrer");
 
   if (monitor) {
-    const saved = writeChromeBridgeRequest(docUrl);
+    const saved = writeChromeBridgeRequest(docUrl, generatedDraftText, activeRunId);
     if (openedWindow && saved) {
       setBridgeStatus(
         "ok",
@@ -851,13 +898,48 @@ function openGoogleDocLink({ monitor = false } = {}) {
   return true;
 }
 
-function writeChromeBridgeRequest(docUrl) {
+function clearChromeBridgeRequest() {
+  try {
+    window.localStorage.removeItem(chromeBridgeRequestKey);
+  } catch {
+    // Ignore local storage failures; this only clears optional bridge state.
+  }
+  lastBridgeRequestSaved = false;
+}
+
+function clearExpiredChromeBridgeRequest() {
+  try {
+    const rawRequest = window.localStorage.getItem(chromeBridgeRequestKey);
+    if (!rawRequest) {
+      return;
+    }
+    const request = JSON.parse(rawRequest);
+    if (!request?.expiresAt || Date.parse(request.expiresAt) <= Date.now()) {
+      clearChromeBridgeRequest();
+    }
+  } catch {
+    clearChromeBridgeRequest();
+  }
+}
+
+clearExpiredChromeBridgeRequest();
+
+function writeChromeBridgeRequest(docUrl, draft, runId) {
+  if (!draft || generatedDraftSource !== "backend" || runId !== activeRunId) {
+    clearChromeBridgeRequest();
+    setBridgeStatus("warn", "尚未生成真实 NVIDIA 多 Agent 正文，不会创建 Chrome 接管请求。");
+    return false;
+  }
   const request = {
     mode: "google-doc-legal-layout",
     docUrl,
     documentId: extractGoogleDocIdFromUrl(docUrl),
-    brief: briefInput.value.trim(),
+    briefSummary: summarizeBrief(),
+    draft,
+    source: generatedDraftSource,
+    runId,
     requestedAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + chromeBridgeRequestTtlMs).toISOString(),
     layout: {
       margins: "1 inch",
       font: "Times New Roman",
@@ -869,6 +951,7 @@ function writeChromeBridgeRequest(docUrl) {
 
   try {
     window.localStorage.setItem(chromeBridgeRequestKey, JSON.stringify(request));
+    window.setTimeout(clearExpiredChromeBridgeRequest, chromeBridgeRequestTtlMs + 1000);
     return true;
   } catch {
     setBridgeStatus("warn", "Google Doc 已打开，但当前浏览器不允许保存 Chrome 接管请求。");
@@ -876,15 +959,14 @@ function writeChromeBridgeRequest(docUrl) {
   }
 }
 
-function startGoogleDocHandoffForRun() {
-  const docUrl = googleDocInput.value.trim();
+function startGoogleDocHandoffForRun({ docUrl, draft, runId } = {}) {
   if (!docUrl) {
     setBridgeStatus("warn", "未填写 Google Doc 链接。本次只生成本地任务状态，可点“本地 DOCX”下载 Word。");
     lastBridgeRequestSaved = false;
     return false;
   }
 
-  const saved = writeChromeBridgeRequest(docUrl);
+  const saved = writeChromeBridgeRequest(docUrl, draft, runId);
   lastBridgeRequestSaved = saved;
   const openedWindow = window.open(docUrl, "_blank", "noopener,noreferrer");
   if (openedWindow && saved) {
@@ -1208,28 +1290,32 @@ function buildGeneratedLegalDraft(brief) {
 }
 
 if (typeof window !== "undefined") {
-  window.SophiaDraftGenerator = {
-    buildGeneratedLegalDraft,
-    inferLegalMatter,
-  };
+  window.buildGeneratedLegalDraft = undefined;
+  window.inferLegalMatter = undefined;
 }
 
-function completeDraftOutput() {
-  generatedDraftText = buildGeneratedLegalDraft(briefInput.value.trim());
+function completeDraftOutput(payload, docUrl = "") {
+  generatedDraftText = String(payload?.draft || "").trim();
+  generatedDraftSource = "backend";
   draftOutput.hidden = false;
-  draftOutputMeta.textContent = googleDocInput.value.trim()
-    ? "Reviewer 完成；可复制正文或下载 DOCX，Google Doc 需 bridge/OAuth 写入"
-    : "Reviewer 完成；可复制正文或下载本地 DOCX";
+  draftOutputMeta.textContent = docUrl
+    ? "Reviewer 已完成质量门。真实 NVIDIA 多 Agent 正文已生成，可写入 Google Doc 或下载 DOCX。"
+    : "Reviewer 已完成质量门。真实 NVIDIA 多 Agent 正文已生成，可下载本地 DOCX。";
+  if (payload?.docx_name) {
+    setBridgeStatus("ok", `NVIDIA 多 Agent 已生成 Word：${payload.docx_name}`);
+  }
 }
 
 async function copyGeneratedDraft() {
-  if (!generatedDraftText) {
-    generatedDraftText = buildGeneratedLegalDraft(briefInput.value.trim());
+  if (!generatedDraftText || generatedDraftSource !== "backend") {
+    setBridgeStatus("error", "还没有真实 NVIDIA 多 Agent 生成结果。请先启动后端并点击“多 Agent 生成”。");
+    setGoogleDocStatus("error", "不会复制浏览器 fallback。请先生成真实法律文书。");
+    return;
   }
 
   try {
     await navigator.clipboard.writeText(generatedDraftText);
-    setBridgeStatus("ok", "已复制草稿正文，可粘贴到 Google Doc 或 Word。");
+    setBridgeStatus("ok", "已复制真实生成正文，可粘贴到 Google Doc 或 Word。");
   } catch {
     const scratch = document.createElement("textarea");
     scratch.value = generatedDraftText;
@@ -1240,7 +1326,7 @@ async function copyGeneratedDraft() {
     scratch.select();
     document.execCommand("copy");
     scratch.remove();
-    setBridgeStatus("ok", "已复制草稿正文，可粘贴到 Google Doc 或 Word。");
+    setBridgeStatus("ok", "已复制真实生成正文，可粘贴到 Google Doc 或 Word。");
   }
 }
 
@@ -1533,8 +1619,10 @@ function downloadLocalDocx() {
     return;
   }
 
-  if (!generatedDraftText) {
-    completeDraftOutput();
+  if (!generatedDraftText || generatedDraftSource !== "backend") {
+    setGoogleDocStatus("error", "还没有真实 NVIDIA 多 Agent 生成结果。请先启动后端并点击“多 Agent 生成”。");
+    setBridgeStatus("error", "不会下载浏览器本地 fallback。请启动 python -m legal_doc_agent serve --port 8766 后重试。");
+    return;
   }
 
   const fileName = `${safeFileName(summarizeGeneratedDraft() || summarizeBrief())}.docx`;
@@ -1752,11 +1840,14 @@ document.querySelectorAll(".agent-node").forEach((node) => {
 
 function prepareNewConversation() {
   window.clearInterval(runTimer);
+  activeRunId += 1;
   showOfficeView();
   restoreConversation();
   setConversationOpen(false);
   generatedDraftText = "";
+  generatedDraftSource = "";
   lastBridgeRequestSaved = false;
+  clearChromeBridgeRequest();
   draftOutput.hidden = true;
   currentRunTokens = 0;
   writeCurrentRunTokens(currentRunTokens);
@@ -1773,16 +1864,37 @@ function prepareNewConversation() {
   briefInput.focus();
 }
 
-function startLegalDraftRun() {
+function generationRunFailureMessage(error) {
+  const rawMessage = String(error?.message || "");
+  const transportFailures = [
+    "generation_service_unhealthy",
+    "network_error",
+    "request_timeout",
+    "Failed to fetch",
+  ];
+  if (rawMessage && !transportFailures.includes(rawMessage)) {
+    return rawMessage;
+  }
+  return generationServiceFailureMessage(error);
+}
+
+async function startLegalDraftRun() {
   window.clearInterval(runTimer);
+  activeRunId += 1;
+  const runId = activeRunId;
   showOfficeView();
   restoreConversation();
   setConversationOpen(false);
   generatedDraftText = "";
+  generatedDraftSource = "";
   lastBridgeRequestSaved = false;
+  clearChromeBridgeRequest();
   draftOutput.hidden = true;
 
-  if (!briefInput.value.trim()) {
+  const briefSnapshot = briefInput.value.trim();
+  const docUrlSnapshot = googleDocInput.value.trim();
+
+  if (!briefSnapshot) {
     setGoogleDocStatus("error", "请先填写需要生成或填写的法律文书内容。");
     briefInput.focus();
     return;
@@ -1792,11 +1904,12 @@ function startLegalDraftRun() {
     return;
   }
 
-  startGoogleDocHandoffForRun();
   currentRunTokens = 0;
   writeCurrentRunTokens(currentRunTokens);
   updateTokenDisplay();
   updateConversationTitle(summarizeBrief(), "多 Agent 协作草拟中");
+  generateLegalButton.disabled = true;
+  sendToAgentButton.disabled = true;
   officeStage.classList.add("is-running");
   runStatus.textContent = "进行中";
   runningCount.textContent = "1";
@@ -1807,19 +1920,27 @@ function startLegalDraftRun() {
   let progress = 12;
   activate(agents[0].id);
   setProgress(progress);
+  setGoogleDocStatus("warn", "正在连接本机 NVIDIA 多 Agent 生成服务...");
+  setBridgeStatus("warn", "需要 python -m legal_doc_agent serve --port 8766 正在运行；不会使用浏览器 fallback。");
 
-  runTimer = window.setInterval(() => {
-    step += 1;
-    progress += 22;
-    addTokenRecord(agents[step - 1]);
-    setProgress(progress);
-
-    if (step < agents.length) {
-      activate(agents[step].id);
+  const animationTimer = window.setInterval(() => {
+    if (runId !== activeRunId) {
+      window.clearInterval(animationTimer);
       return;
     }
+    step = (step + 1) % agents.length;
+    progress = Math.min(88, progress + 10);
+    activate(agents[step].id);
+    setProgress(progress);
+  }, 900);
+  runTimer = animationTimer;
 
-    window.clearInterval(runTimer);
+  try {
+    const payload = await requestBackendLegalDraft(briefSnapshot);
+    if (runId !== activeRunId) {
+      return;
+    }
+    window.clearInterval(animationTimer);
     officeStage.classList.remove("is-running");
     runStatus.textContent = "已完成";
     runningCount.textContent = "0";
@@ -1830,16 +1951,40 @@ function startLegalDraftRun() {
     renderTimeline(timeline.length);
     setProgress(100);
     updateConversationTitle(summarizeBrief(), "Reviewer 审核完成");
-    completeDraftOutput();
-    const hasGoogleDoc = Boolean(googleDocInput.value.trim());
-    if (hasGoogleDoc) {
+    completeDraftOutput(payload, docUrlSnapshot);
+    const draftSnapshot = String(payload?.draft || "").trim();
+
+    if (docUrlSnapshot) {
+      startGoogleDocHandoffForRun({ docUrl: docUrlSnapshot, draft: draftSnapshot, runId });
       setGoogleDocStatus("warn", "Reviewer 已完成质量门。正在尝试通过本机 Google OAuth 服务写入 Google Doc...");
-      writeDraftToGoogleDocViaLocalService();
+      writeDraftToGoogleDocViaLocalService({ docUrl: docUrlSnapshot, draft: draftSnapshot, runId });
     } else {
-      setGoogleDocStatus("ok", "最终 Reviewer 已完成质量门。未提供 Google Doc，可下载本地 DOCX 交付。");
-      setBridgeStatus("ok", "可下载本地 DOCX 交付。");
+      setGoogleDocStatus("ok", "真实 NVIDIA 多 Agent 文书已生成；可下载本地 DOCX。");
     }
-  }, 900);
+  } catch (error) {
+    if (runId !== activeRunId) {
+      return;
+    }
+    window.clearInterval(animationTimer);
+    officeStage.classList.remove("is-running");
+    runStatus.textContent = "生成失败";
+    runningCount.textContent = "0";
+    doneCount.textContent = "0";
+    totalCount.textContent = "0";
+    setProgress(0);
+    generatedDraftText = "";
+    generatedDraftSource = "";
+    clearChromeBridgeRequest();
+    draftOutput.hidden = true;
+    const message = generationRunFailureMessage(error);
+    setGoogleDocStatus("error", message);
+    setBridgeStatus("error", message);
+  } finally {
+    if (runId === activeRunId) {
+      generateLegalButton.disabled = false;
+      sendToAgentButton.disabled = false;
+    }
+  }
 }
 
 function sendBriefToAgent() {

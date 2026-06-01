@@ -74,3 +74,27 @@ class UiDraftGeneratorTests(unittest.TestCase):
         )
         self.assertEqual(result["corporateSpec"]["matterLine"], "Detected matter type: corporate")
         self.assertIn("post-formation legal documentation package", result["corporateSpec"]["draft"])
+
+    def test_ui_requires_backend_generation_before_delivery(self) -> None:
+        source = (ROOT / "ui" / "app.js").read_text(encoding="utf-8")
+
+        start_run = source.rindex("async function startLegalDraftRun")
+        event_listeners = source.index("runButton.addEventListener", start_run)
+        start_run_block = source[start_run:event_listeners]
+        self.assertIn("requestBackendLegalDraft(briefSnapshot)", start_run_block)
+        self.assertNotIn("startGoogleDocHandoffForRun();", start_run_block)
+        self.assertIn("clearChromeBridgeRequest();", start_run_block)
+        self.assertIn('generatedDraftSource = "backend"', source)
+        self.assertNotIn("Legacy", source)
+
+        copy_start = source.rindex("async function copyGeneratedDraft")
+        xml_start = source.index("function xmlEscape", copy_start)
+        copy_block = source[copy_start:xml_start]
+        self.assertIn('generatedDraftSource !== "backend"', copy_block)
+        self.assertNotIn("buildGeneratedLegalDraft", copy_block)
+
+        download_start = source.rindex("function downloadLocalDocx")
+        skills_start = source.index("function renderSkills", download_start)
+        download_block = source[download_start:skills_start]
+        self.assertIn('generatedDraftSource !== "backend"', download_block)
+        self.assertNotIn("completeDraftOutput();", download_block)
