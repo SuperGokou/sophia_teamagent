@@ -164,6 +164,42 @@ class GoogleDocsLegalFormatter:
             ),
         )
 
+    def write_legal_draft(self, doc_url: str, draft_text: str) -> GoogleDocLayoutResult:
+        """Replace the document body with a draft and apply legal-document layout."""
+
+        text = draft_text.strip()
+        if not text:
+            raise ValueError("Draft text is empty.")
+
+        access = self.check_editor_access(doc_url)
+        if not access.can_edit:
+            raise GoogleDocPermissionError(access.message)
+
+        document = (
+            self._docs_service.documents()
+            .get(documentId=access.document_id)
+            .execute()
+        )
+        current_end_index = _document_end_index(document)
+        body_text = f"{text}\n"
+        requests = _replace_body_requests(current_end_index, body_text)
+        requests.extend(_legal_layout_requests(1 + _utf16_code_units(body_text)))
+
+        (
+            self._docs_service.documents()
+            .batchUpdate(documentId=access.document_id, body={"requests": requests})
+            .execute()
+        )
+        return GoogleDocLayoutResult(
+            document_id=access.document_id,
+            title=access.title,
+            requests_sent=len(requests),
+            summary=(
+                "Wrote draft text and applied legal-document layout: 1 inch margins, "
+                "Times New Roman 11 pt, 115% line spacing, and consistent spacing."
+            ),
+        )
+
 
 def _document_end_index(document: dict[str, Any]) -> int:
     body_content = document.get("body", {}).get("content", [])
@@ -173,6 +209,34 @@ def _document_end_index(document: dict[str, Any]) -> int:
         if isinstance(item.get("endIndex"), int)
     ]
     return max(end_indices, default=1)
+
+
+def _utf16_code_units(value: str) -> int:
+    return len(value.encode("utf-16-le")) // 2
+
+
+def _replace_body_requests(end_index: int, text: str) -> list[dict[str, Any]]:
+    requests: list[dict[str, Any]] = []
+    if end_index > 2:
+        requests.append(
+            {
+                "deleteContentRange": {
+                    "range": {
+                        "startIndex": 1,
+                        "endIndex": end_index - 1,
+                    }
+                }
+            }
+        )
+    requests.append(
+        {
+            "insertText": {
+                "location": {"index": 1},
+                "text": text,
+            }
+        }
+    )
+    return requests
 
 
 def _legal_layout_requests(end_index: int) -> list[dict[str, Any]]:

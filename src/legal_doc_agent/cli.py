@@ -16,6 +16,7 @@ from legal_doc_agent.google_docs import (
     build_google_docs_formatter,
     extract_google_doc_id,
 )
+from legal_doc_agent.google_doc_service import run_google_doc_service
 from legal_doc_agent.legal_kb import FIRST_PHASE_CONNECTORS, LegalKnowledgeBase, SearchHit
 
 
@@ -295,7 +296,8 @@ def _google_doc_main(argv: list[str]) -> int:
     parser = _build_google_doc_parser()
     args = parser.parse_args(argv)
     try:
-        extract_google_doc_id(args.url)
+        if getattr(args, "url", None):
+            extract_google_doc_id(args.url)
         formatter = build_google_docs_formatter(
             credentials_path=args.credentials,
             token_path=args.token,
@@ -320,11 +322,37 @@ def _google_doc_main(argv: list[str]) -> int:
             print(f"requests_sent: {result.requests_sent}")
             print(result.summary)
             return 0
+        if args.command == "write":
+            draft = _load_google_doc_draft(args)
+            result = formatter.write_legal_draft(args.url, draft)
+            print(f"document_id: {result.document_id}")
+            if result.title:
+                print(f"title: {result.title}")
+            print(f"requests_sent: {result.requests_sent}")
+            print(result.summary)
+            return 0
+        if args.command == "serve":
+            run_google_doc_service(formatter, host=args.host, port=args.port)
+            return 0
         parser.error("unknown google-doc command")
     except (RuntimeError, FileNotFoundError, ValueError, GoogleDocPermissionError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
     return 1
+
+
+def _load_google_doc_draft(args: argparse.Namespace) -> str:
+    if args.text_file:
+        draft = args.text_file.read_text(encoding="utf-8")
+    elif args.text:
+        draft = args.text
+    elif not sys.stdin.isatty():
+        draft = sys.stdin.read()
+    else:
+        raise ValueError("Provide --text-file, --text, or pipe draft text on stdin.")
+    if not draft.strip():
+        raise ValueError("Draft text is empty.")
+    return draft.strip()
 
 
 def _build_kb_parser() -> argparse.ArgumentParser:
@@ -402,6 +430,20 @@ def _build_google_doc_parser() -> argparse.ArgumentParser:
         help="Apply standard legal-document layout.",
     )
     format_doc.add_argument("url")
+    write_doc = subparsers.add_parser(
+        "write",
+        help="Replace the document body with draft text and apply legal layout.",
+    )
+    write_doc.add_argument("url")
+    write_group = write_doc.add_mutually_exclusive_group(required=False)
+    write_group.add_argument("--text")
+    write_group.add_argument("--text-file", type=Path)
+    serve = subparsers.add_parser(
+        "serve",
+        help="Run the local Google Docs OAuth service for the web UI.",
+    )
+    serve.add_argument("--host", default="127.0.0.1")
+    serve.add_argument("--port", type=int, default=8765)
     return parser
 
 

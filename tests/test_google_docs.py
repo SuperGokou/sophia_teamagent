@@ -127,6 +127,33 @@ class GoogleDocsTests(unittest.TestCase):
         with self.assertRaises(GoogleDocPermissionError):
             formatter.apply_legal_layout("https://docs.google.com/document/d/doc123/edit")
 
+    def test_write_legal_draft_replaces_body_and_formats_document(self) -> None:
+        docs_service = _FakeDocsService()
+        formatter = GoogleDocsLegalFormatter(
+            docs_service=docs_service,
+            drive_service=_FakeDriveService(
+                {
+                    "name": "Draft",
+                    "mimeType": GOOGLE_DOC_MIME_TYPE,
+                    "capabilities": {"canEdit": True},
+                }
+            ),
+        )
+
+        result = formatter.write_legal_draft(
+            "https://docs.google.com/document/d/doc123/edit",
+            "Company legal name: Example AI, Inc.",
+        )
+
+        self.assertEqual(result.requests_sent, 5)
+        body = docs_service.documents_resource.batch_body
+        self.assertIsNotNone(body)
+        requests = body["requests"]  # type: ignore[index]
+        self.assertIn("deleteContentRange", requests[0])
+        self.assertEqual(requests[1]["insertText"]["location"]["index"], 1)
+        self.assertIn("Example AI", requests[1]["insertText"]["text"])
+        self.assertEqual(requests[3]["updateTextStyle"]["textStyle"]["fontSize"]["magnitude"], 11)
+
 
 if __name__ == "__main__":
     unittest.main()

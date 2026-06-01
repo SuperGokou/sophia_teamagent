@@ -219,6 +219,7 @@ const tokenLedgerKey = "sophia.tokenLedger.v1";
 const currentRunTokenKey = "sophia.currentRunTokens.v1";
 const automationTasksKey = "sophia.automation.tasks.v1";
 const chromeBridgeRequestKey = "sophia.chromeDocBridge.v1";
+const googleDocServiceWriteUrl = "http://127.0.0.1:8765/google-doc/write";
 const dailyTokenLimit = 10000000;
 const tokenEstimates = {
   planner: { used: 5200, saved: 680 },
@@ -697,6 +698,77 @@ function setBridgeStatus(kind, message) {
     bridgeStatus.classList.add(`is-${kind}`);
   }
   bridgeStatus.textContent = message;
+}
+
+function postJson(url, payload) {
+  if (typeof fetch === "function") {
+    return fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }).then(async (response) => {
+      const data = await response.json().catch(() => ({}));
+      return { ok: response.ok && data.ok !== false, status: response.status, data };
+    });
+  }
+
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open("POST", url, true);
+    request.setRequestHeader("Content-Type", "application/json");
+    request.onload = () => {
+      let data = {};
+      try {
+        data = JSON.parse(request.responseText || "{}");
+      } catch {
+        data = {};
+      }
+      resolve({
+        ok: request.status >= 200 && request.status < 300 && data.ok !== false,
+        status: request.status,
+        data,
+      });
+    };
+    request.onerror = () => reject(new Error("network_error"));
+    request.send(JSON.stringify(payload));
+  });
+}
+
+async function writeDraftToGoogleDocViaLocalService() {
+  const docUrl = googleDocInput.value.trim();
+  if (!docUrl || !generatedDraftText) {
+    return false;
+  }
+
+  setBridgeStatus("warn", "正在连接本机 Google OAuth 服务，准备写入 Google Doc...");
+  try {
+    const response = await postJson(googleDocServiceWriteUrl, {
+      url: docUrl,
+      draft: generatedDraftText,
+    });
+    if (!response.ok) {
+      const message = response.data?.message || "Google Doc 写入失败。";
+      setGoogleDocStatus("error", message);
+      setBridgeStatus(
+        response.status === 403 ? "error" : "warn",
+        response.status === 403
+          ? "当前 Google 账号没有 Editor 权限。请在 Share 中开放编辑权限后重试。"
+          : "本机服务返回错误。请查看运行服务的终端输出。",
+      );
+      return false;
+    }
+
+    setGoogleDocStatus("ok", "Google Doc 已写入草稿，并完成标准法律文书版式。");
+    setBridgeStatus("ok", response.data?.message || "Google Doc 已完成写入和排版。");
+    draftOutputMeta.textContent = "Reviewer 完成；Google Doc 已写入并排版，本地 DOCX 也可备用";
+    return true;
+  } catch {
+    setBridgeStatus(
+      "warn",
+      "本机 Google OAuth 服务未运行。请启动 python -m legal_doc_agent google-doc serve --port 8765，或先复制正文/下载 DOCX。",
+    );
+    return false;
+  }
 }
 
 function openGoogleDocLink({ monitor = false } = {}) {
@@ -1493,20 +1565,13 @@ function startLegalDraftRun() {
     updateConversationTitle(summarizeBrief(), "Reviewer 审核完成");
     completeDraftOutput();
     const hasGoogleDoc = Boolean(googleDocInput.value.trim());
-    setGoogleDocStatus(
-      "ok",
-      hasGoogleDoc
-        ? "最终 Reviewer 已完成质量门。已生成草稿；Google Doc 写入需要 Chrome bridge/后端 OAuth，未运行时不会改变原文档。"
-        : "最终 Reviewer 已完成质量门。未提供 Google Doc，可下载本地 DOCX 交付。",
-    );
-    setBridgeStatus(
-      hasGoogleDoc && !lastBridgeRequestSaved ? "warn" : "ok",
-      hasGoogleDoc
-        ? lastBridgeRequestSaved
-          ? "如果 Google Doc 没有变化，说明 Chrome 接管插件或后端 Google Docs 服务尚未运行；可先点“本地 DOCX”。"
-          : "Google Doc 没有被直接写入。请运行 Chrome bridge/后端 OAuth 服务，或使用“复制正文”“本地 DOCX”。"
-        : "可下载本地 DOCX 交付。",
-    );
+    if (hasGoogleDoc) {
+      setGoogleDocStatus("warn", "Reviewer 已完成质量门。正在尝试通过本机 Google OAuth 服务写入 Google Doc...");
+      writeDraftToGoogleDocViaLocalService();
+    } else {
+      setGoogleDocStatus("ok", "最终 Reviewer 已完成质量门。未提供 Google Doc，可下载本地 DOCX 交付。");
+      setBridgeStatus("ok", "可下载本地 DOCX 交付。");
+    }
   }, 900);
 }
 

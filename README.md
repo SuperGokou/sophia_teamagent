@@ -50,6 +50,14 @@ target document:
 python -m pip install -e ".[google]"
 ```
 
+One-time Google setup:
+
+1. In Google Cloud Console, create or select a project.
+2. Enable both Google Docs API and Google Drive API.
+3. Configure the OAuth consent screen for your own Google account.
+4. Create an OAuth Client ID with application type `Desktop app`.
+5. Download the client JSON to `credentials/google_oauth_client.json`.
+
 The formatter checks the Drive `canEdit` capability before making changes. If the
 link is not editable by the active credentials, the app must stop and ask the
 user to open Google Doc sharing and grant Editor permission. The app never tries
@@ -66,6 +74,31 @@ Apply the standard legal layout:
 ```powershell
 python -m legal_doc_agent google-doc format "https://docs.google.com/document/d/.../edit"
 ```
+
+Replace the document body with generated draft text and apply legal layout:
+
+```powershell
+python -m legal_doc_agent google-doc write "https://docs.google.com/document/d/.../edit" --text-file outputs/draft.txt
+```
+
+Run the local OAuth service that the web UI can call:
+
+```powershell
+python -m legal_doc_agent google-doc serve --port 8765
+```
+
+On first run, Google opens a browser consent page. Sign in with the same account
+that has Editor access to the target document. The local token is saved under
+`credentials/google_token.json`, which is ignored by git.
+
+When this service is running, the UI's `Multi Agent` flow will attempt to call:
+
+```text
+POST http://127.0.0.1:8765/google-doc/write
+```
+
+If the service is not running, the UI still exposes `Copy draft` and local
+`.docx` download as fallbacks.
 
 When editor access is confirmed, the formatter can apply a standard legal layout:
 1 inch margins, Times New Roman 11 pt body text, 115% line spacing, and consistent
