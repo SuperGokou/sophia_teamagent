@@ -65,7 +65,7 @@ class NvidiaClientTests(unittest.TestCase):
         urlopen.return_value = response
         config = NvidiaConfig(
             api_key="key",
-            model="openai/gpt-oss-120b",
+            model="minimaxai/minimax-m2.7",
             max_tokens=4096,
         )
         client = NvidiaClient(config)
@@ -79,7 +79,7 @@ class NvidiaClientTests(unittest.TestCase):
             "https://integrate.api.nvidia.com/v1/chat/completions",
         )
         payload = json.loads(request.data.decode("utf-8"))
-        self.assertEqual(payload["model"], "openai/gpt-oss-120b")
+        self.assertEqual(payload["model"], "minimaxai/minimax-m2.7")
         self.assertEqual(payload["messages"][0]["content"], "hello")
         self.assertEqual(payload["temperature"], 1.0)
         self.assertEqual(payload["top_p"], 1.0)

@@ -191,7 +191,7 @@ Values can be set as process environment variables or in the ignored project
 
 - `NVIDIA_API_KEY`: required for real generation.
 - `NVIDIA_BASE_URL`: defaults to `https://integrate.api.nvidia.com/v1`.
-- `NVIDIA_MODEL`: defaults to `openai/gpt-oss-120b`.
+- `NVIDIA_MODEL`: defaults to `minimaxai/minimax-m2.7`.
 - `NVIDIA_TEMPERATURE`: defaults to `1`.
 - `NVIDIA_TOP_P`: defaults to `1`.
 - `NVIDIA_MAX_TOKENS`: defaults to `4096`.
@@ -207,23 +207,27 @@ Single-agent CLI options override the single-agent values above.
 
 Default role routing:
 
-- `planner`: `openai/gpt-oss-120b`, for checklists, structure, and package planning.
+- `planner`: `minimaxai/minimax-m2.7`, for checklists, structure, and package planning.
 - `drafter`: `deepseek-ai/deepseek-v4-pro`, for long legal templates and clause-heavy drafting.
 - `analyst`: `minimaxai/minimax-m2.7`, for optional-document analysis, risk tradeoffs, and benchmark-style synthesis.
 - `reasoner`: `nvidia/nemotron-3-super-120b-a12b`, for deep thinking on preparation materials, cross-document dependencies, and counsel-review risks.
 - `coder`: `qwen/qwen3-coder-480b-a35b-instruct`, reserved for future code/schema/automation tasks.
-- `reviewer`: `openai/gpt-oss-120b`, for the final legal quality gate, consistency checks, citation-support review, layout readiness, and counsel-review risk notes.
+- `reviewer`: `nvidia/nemotron-3-super-120b-a12b`, for the final legal quality gate, consistency checks, citation-support review, layout readiness, and counsel-review risk notes.
 
 Override any role with environment variables like:
 
 ```powershell
-$env:NVIDIA_PLANNER_MODEL = "openai/gpt-oss-120b"
+$env:NVIDIA_PLANNER_MODEL = "minimaxai/minimax-m2.7"
 $env:NVIDIA_DRAFTER_MODEL = "deepseek-ai/deepseek-v4-pro"
 $env:NVIDIA_ANALYST_MODEL = "minimaxai/minimax-m2.7"
 $env:NVIDIA_REASONER_MODEL = "nvidia/nemotron-3-super-120b-a12b"
 $env:NVIDIA_REASONER_ENABLE_THINKING = "true"
 $env:NVIDIA_REASONER_REASONING_BUDGET = "16384"
 $env:NVIDIA_REASONER_STREAM = "true"
+$env:NVIDIA_REVIEWER_MODEL = "nvidia/nemotron-3-super-120b-a12b"
+$env:NVIDIA_REVIEWER_ENABLE_THINKING = "true"
+$env:NVIDIA_REVIEWER_REASONING_BUDGET = "4096"
+$env:NVIDIA_REVIEWER_STREAM = "true"
 $env:NVIDIA_DRAFTER_THINKING = "false"
 ```
 

@@ -31,7 +31,7 @@ class NvidiaConfig:
 
     api_key: str | None
     base_url: str = "https://integrate.api.nvidia.com/v1"
-    model: str = "openai/gpt-oss-120b"
+    model: str = "minimaxai/minimax-m2.7"
     timeout_seconds: float = 120.0
     temperature: float = 1.0
     top_p: float = 1.0
