@@ -93,7 +93,7 @@ class LegalGenerationLocalServiceTests(unittest.TestCase):
             )
 
             with (
-                patch("legal_doc_agent.generation_service.NvidiaConfig.from_env", return_value=object()),
+                patch("legal_doc_agent.generation_service.NvidiaConfig.from_env", return_value=object()) as from_env,
                 patch("legal_doc_agent.generation_service.NvidiaAgentRouter", return_value=object()),
                 patch(
                     "legal_doc_agent.generation_service.generate_web_legal_package",
@@ -108,6 +108,7 @@ class LegalGenerationLocalServiceTests(unittest.TestCase):
                 )
 
             self.assertTrue(result["ok"])
+            self.assertEqual(from_env.call_args.kwargs["timeout_seconds"], 120)
             self.assertIn("docx_name", result)
             self.assertEqual(
                 base64.b64decode(result["docx_base64"]),

@@ -109,9 +109,9 @@ def load_web_agent_profiles_from_env() -> dict[str, AgentProfile]:
     """Load latency-focused profiles for interactive web generation."""
 
     model = env_value("NVIDIA_WEB_MODEL", "google/gemma-3n-e4b-it") or "google/gemma-3n-e4b-it"
-    default_max_tokens = int(env_value("NVIDIA_WEB_MAX_TOKENS", "768") or "768")
+    default_max_tokens = int(env_value("NVIDIA_WEB_MAX_TOKENS", "1536") or "1536")
     drafter_max_tokens = int(
-        env_value("NVIDIA_WEB_DRAFTER_MAX_TOKENS", "1024") or "1024"
+        env_value("NVIDIA_WEB_DRAFTER_MAX_TOKENS", "3072") or "3072"
     )
     profiles: dict[str, AgentProfile] = {}
     for role, profile in DEFAULT_AGENT_PROFILES.items():

@@ -65,7 +65,7 @@ class LegalGenerationLocalService:
         client = NvidiaAgentRouter(
             base_config=NvidiaConfig.from_env(
                 base_url=self._base_url,
-                timeout_seconds=60,
+                timeout_seconds=120,
             ),
             profiles=load_web_agent_profiles_from_env(),
         )

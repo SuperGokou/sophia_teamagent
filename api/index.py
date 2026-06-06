@@ -51,7 +51,7 @@ class handler(BaseHTTPRequestHandler):
             artifact_dir = output_root / "artifacts"
 
             client = NvidiaAgentRouter(
-                base_config=NvidiaConfig.from_env(timeout_seconds=60),
+                base_config=NvidiaConfig.from_env(timeout_seconds=120),
                 profiles=load_web_agent_profiles_from_env(),
             )
             result = generate_web_legal_package(

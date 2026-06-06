@@ -12,6 +12,7 @@ from legal_doc_agent.agents import (
     REASONER_ROLE,
     NvidiaAgentRouter,
     load_agent_profiles_from_env,
+    load_web_agent_profiles_from_env,
 )
 from legal_doc_agent.config import NvidiaConfig
 
@@ -97,6 +98,16 @@ class AgentRouterTests(unittest.TestCase):
         self.assertEqual(drafter.top_p, 0.7)
         self.assertEqual(drafter.max_tokens, 2048)
         self.assertFalse(drafter.thinking)
+
+    def test_web_profiles_default_to_non_truncated_drafter_budget(self) -> None:
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch("legal_doc_agent.config._load_dotenv_values", return_value={}),
+        ):
+            profiles = load_web_agent_profiles_from_env()
+
+        self.assertGreaterEqual(profiles[DRAFTER_ROLE].max_tokens, 3072)
+        self.assertGreaterEqual(profiles[PLANNER_ROLE].max_tokens, 1536)
 
 
 def _mock_response(payload: dict[str, object]) -> Mock:

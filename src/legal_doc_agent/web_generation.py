@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -32,8 +33,10 @@ def generate_web_legal_package(
     observations: list[Observation] = []
 
     print("starting web job: compact_package", flush=True)
-    draft = _strip_markdown_fence(
-        client.complete(_compact_package_messages(brief), role=DRAFTER_ROLE)
+    draft = _ensure_complete_web_package(
+        _strip_markdown_fence(
+            client.complete(_compact_package_messages(brief), role=DRAFTER_ROLE)
+        )
     )
     draft_path = artifact_dir / "web_drafter_package.md"
     draft_path.write_text(draft, encoding="utf-8")
@@ -91,10 +94,11 @@ def _compact_package_messages(brief: str) -> list[dict[str, str]]:
                 "# Planner Summary\n"
                 "Matter type, missing facts, required documents, delivery order.\n"
                 "# Draft Package\n"
-                "Practical clauses/templates/checklists with bracketed placeholders.\n"
+                "Complete practical clauses/templates/checklists with bracketed placeholders. "
+                "Do not stop mid-item; close every list item and section.\n"
                 "# Reviewer Quality Gate\n"
                 "Blocking issues, required fixes, formatting checks, and counsel review notes.\n"
-                "Keep the whole response under 900 words.\n\n"
+                "Target 1,600-2,400 words. Finish with the exact line: END OF PACKAGE.\n\n"
                 f"REQUEST:\n{brief}"
             ),
         },
@@ -111,3 +115,60 @@ def _strip_markdown_fence(markdown: str) -> str:
     if lines and lines[-1].strip() == "```":
         lines = lines[:-1]
     return "\n".join(lines).strip()
+
+
+def _ensure_complete_web_package(markdown: str) -> str:
+    text = _drop_likely_truncated_tail(markdown.strip())
+    if "# Reviewer Quality Gate" in text and "END OF PACKAGE" in text:
+        return text
+
+    completion_sections: list[str] = []
+    if "# Reviewer Quality Gate" not in text:
+        completion_sections.append(
+            "\n\n# Reviewer Quality Gate\n\n"
+            "## Completion Safeguard\n"
+            "The online generator detected that the provider response may have ended before "
+            "the final review package was complete. Treat this package as a drafting aid, "
+            "not final legal advice.\n\n"
+            "## Blocking Issues\n"
+            "- Confirm the entity name, jurisdiction, file number, founders, equity split, "
+            "vesting schedule, IP ownership, and signature authority.\n"
+            "- Replace all bracketed placeholders before signature, filing, investor review, "
+            "or Google Doc delivery.\n"
+            "- Have qualified counsel review enforceability, tax timing, securities law, "
+            "employment/IP assignment, and Delaware corporate requirements.\n\n"
+            "## Required Fixes\n"
+            "- Complete missing schedules, exhibits, signature blocks, dates, addresses, "
+            "share counts, consideration, and board approvals.\n"
+            "- Check all cross-references, numbering, defined terms, and attachment labels.\n"
+            "- Confirm that the Word document uses legal-document formatting before delivery.\n\n"
+            "## Formatting Checks\n"
+            "- Use consistent headings, numbered clauses, page breaks, signature blocks, and "
+            "Times New Roman legal-document styling.\n"
+            "- Keep checklists separate from operative clauses so counsel can review quickly.\n\n"
+            "## Counsel Review Notes\n"
+            "Counsel should review the package against the company's charter, cap table, "
+            "board approvals, tax deadlines, IP chain of title, and investor diligence needs."
+        )
+    if "END OF PACKAGE" not in text:
+        completion_sections.append("\n\nEND OF PACKAGE")
+    return f"{text}{''.join(completion_sections)}".strip()
+
+
+def _drop_likely_truncated_tail(markdown: str) -> str:
+    lines = markdown.splitlines()
+    while lines and not lines[-1].strip():
+        lines.pop()
+    if not lines:
+        return ""
+
+    tail = lines[-1].strip()
+    if _looks_like_truncated_tail(tail):
+        lines.pop()
+    return "\n".join(lines).strip()
+
+
+def _looks_like_truncated_tail(line: str) -> bool:
+    if re_match := re.search(r"(Scope of|Prep:|Purpose:|Risk if missing:|Who signs:)$", line):
+        return bool(re_match)
+    return len(line) > 40 and line[-1] not in ".。;；:：)]}"
