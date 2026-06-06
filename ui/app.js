@@ -1369,12 +1369,20 @@ function completeDraftOutput(payload, docUrl = "") {
   generatedDraftSource = "backend";
   generatedDocxBase64 = String(payload?.docx_base64 || "").trim();
   generatedDocxName = String(payload?.docx_name || "").trim();
+  const timeoutRecovery = payload?.generation_mode === "timeout_recovery";
   draftOutput.hidden = false;
-  draftOutputMeta.textContent = docUrl
-    ? "Reviewer 已完成质量门。真实 NVIDIA 多 Agent 正文已生成，可写入 Google Doc 或下载 DOCX。"
-    : "Reviewer 已完成质量门。真实 NVIDIA 多 Agent 正文已生成，可下载本地 DOCX。";
+  draftOutputMeta.textContent = timeoutRecovery
+    ? "NVIDIA provider 两次超时；已生成后端恢复 Word 包，可下载使用或稍后重试完整 NVIDIA 草稿。"
+    : docUrl
+      ? "Reviewer 已完成质量门。真实 NVIDIA 多 Agent 正文已生成，可写入 Google Doc 或下载 DOCX。"
+      : "Reviewer 已完成质量门。真实 NVIDIA 多 Agent 正文已生成，可下载本地 DOCX。";
   if (generatedDocxName) {
-    setBridgeStatus("ok", `NVIDIA 多 Agent 已生成 Word：${generatedDocxName}`);
+    setBridgeStatus(
+      timeoutRecovery ? "warn" : "ok",
+      timeoutRecovery
+        ? `已生成超时恢复 Word：${generatedDocxName}`
+        : `NVIDIA 多 Agent 已生成 Word：${generatedDocxName}`,
+    );
   }
 }
 
@@ -2145,7 +2153,12 @@ async function startLegalDraftRun() {
       setGoogleDocStatus("warn", "Reviewer 已完成质量门。正在尝试通过本机 Google OAuth 服务写入 Google Doc...");
       writeDraftToGoogleDocViaLocalService({ docUrl: docUrlSnapshot, draft: draftSnapshot, runId });
     } else {
-      setGoogleDocStatus("ok", "真实 NVIDIA 多 Agent 文书已生成；可下载本地 DOCX。");
+      setGoogleDocStatus(
+        payload?.generation_mode === "timeout_recovery" ? "warn" : "ok",
+        payload?.generation_mode === "timeout_recovery"
+          ? "NVIDIA provider 超时；已生成后端恢复 DOCX，可下载或稍后重试完整草稿。"
+          : "真实 NVIDIA 多 Agent 文书已生成；可下载本地 DOCX。",
+      );
     }
   } catch (error) {
     if (runId !== activeRunId) {

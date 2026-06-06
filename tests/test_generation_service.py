@@ -87,6 +87,7 @@ class LegalGenerationLocalServiceTests(unittest.TestCase):
                     output_path=output_path,
                     artifact_dir=artifact_dir,
                     observations=[],
+                    generation_mode="nvidia",
                 )
 
             service = LegalGenerationLocalService(

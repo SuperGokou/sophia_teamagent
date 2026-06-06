@@ -70,6 +70,45 @@ class CapturingClient:
         )
 
 
+class AlwaysTimeoutClient:
+    def __init__(self) -> None:
+        self.calls: list[list[dict[str, str]]] = []
+
+    def complete(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        role: str | None = None,
+    ) -> str:
+        self.calls.append(messages)
+        raise TimeoutError("The read operation timed out")
+
+
+LONG_POST_FORMATION_PROMPT = (
+    "You are a top-tier Silicon Valley startup attorney and Delaware corporate counsel. "
+    "Generate a complete institutional-grade post-formation legal documentation package "
+    "for a Delaware C-Corporation startup. Do not summarize excessively. Do not omit key clauses. "
+    "Continue sequentially until all required documents are complete.\n\n"
+    "# COMPANY PROFILE\n"
+    "Company Type: AI software company + AI agent staffing platform\n"
+    "Business Activities: AI agents, AI-powered staffing systems, SaaS products, enterprise productivity software\n"
+    "Jurisdiction: Delaware C-Corporation\n"
+    "Founders: 2 founders\n"
+    "Founder Ownership: 50/50\n"
+    "Authorized Shares: 10,000,000 common shares\n"
+    "Founder Allocation: 5,000,000 shares each\n"
+    "Founder Vesting: 4-year vesting, 1-year cliff, monthly vesting thereafter\n\n"
+    "# STEP 1 REQUIRED VS OPTIONAL DOCUMENT CHECKLIST\n"
+    "Required documents include corporate bylaws, initial board consent, founder stock purchase agreements, "
+    "stock ledger, cap table, IP assignment, CIIAA, 83(b) election instructions, banking authorization, "
+    "officer appointment, founder vesting and repurchase rights.\n\n"
+    "# STEP 3 LAW-FIRM-GRADE DOCUMENT TEMPLATES\n"
+    "For every required document generate a complete, detailed, professional template drafted in the style "
+    "of Cooley, Wilson Sonsini, Gunderson, Orrick, YC and Clerky startup standards.\n\n"
+    + ("Repeat complete professional template requirement. " * 140)
+)
+
+
 class WebGenerationTests(unittest.TestCase):
     def test_truncated_generation_gets_completion_safeguard(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -141,6 +180,45 @@ class WebGenerationTests(unittest.TestCase):
         self.assertIn("# Retrieved Authority Context", artifact_text)
         self.assertIn("8 Del. C. § 141(f)", artifact_text)
         self.assertIn("version_date: 2026-06-06", artifact_text)
+
+    def test_long_prompt_is_compacted_before_provider_call(self) -> None:
+        client = CapturingClient()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            generate_web_legal_package(
+                client=client,
+                brief=LONG_POST_FORMATION_PROMPT,
+                output_path=root / "package.docx",
+                artifact_dir=root / "artifacts",
+            )
+
+        prompt = client.messages[1]["content"]
+        self.assertLess(len(prompt), 5000)
+        self.assertIn("ONLINE-SAFE REQUEST DIGEST", prompt)
+        self.assertIn("Delaware C-Corporation", prompt)
+        self.assertIn("83(b) election instructions", prompt)
+        self.assertNotIn("Repeat complete professional template requirement", prompt)
+
+    def test_double_provider_timeout_returns_recovery_docx(self) -> None:
+        client = AlwaysTimeoutClient()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            result = generate_web_legal_package(
+                client=client,
+                brief=LONG_POST_FORMATION_PROMPT,
+                output_path=root / "package.docx",
+                artifact_dir=root / "artifacts",
+            )
+            artifact_text = (result.artifact_dir / "web_drafter_package.md").read_text(
+                encoding="utf-8"
+            )
+            self.assertTrue(result.output_path.exists())
+
+        self.assertEqual(len(client.calls), 2)
+        self.assertIn("NVIDIA Provider Timeout Recovery Package", artifact_text)
+        self.assertIn("Required Document Checklist", artifact_text)
+        self.assertIn("END OF PACKAGE", artifact_text)
+        self.assertEqual(result.generation_mode, "timeout_recovery")
 
 
 if __name__ == "__main__":

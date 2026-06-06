@@ -91,9 +91,14 @@ class LegalGenerationLocalService:
             "draft": markdown,
             "docx_name": result.output_path.name,
             "docx_base64": _read_docx_base64(result.output_path),
+            "generation_mode": result.generation_mode,
             "artifact_id": result.artifact_dir.name,
             "observations": [asdict(observation) for observation in result.observations],
-            "message": "Generated with local NVIDIA multi-agent harness.",
+            "message": (
+                "Generated provider-timeout recovery package."
+                if result.generation_mode == "timeout_recovery"
+                else "Generated with local NVIDIA multi-agent harness."
+            ),
         }
 
 

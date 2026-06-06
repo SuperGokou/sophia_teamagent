@@ -93,6 +93,8 @@ class UiDraftGeneratorTests(unittest.TestCase):
         self.assertIn('generatedDraftSource = "backend"', source)
         self.assertIn("generatedDocxBase64", source)
         self.assertIn("docxBase64ToBlob", source)
+        self.assertIn('generation_mode === "timeout_recovery"', source)
+        self.assertIn("已生成超时恢复 Word", source)
         self.assertNotIn("Legacy", source)
 
         copy_start = source.rindex("async function copyGeneratedDraft")

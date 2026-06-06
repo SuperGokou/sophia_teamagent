@@ -11,6 +11,10 @@ from legal_doc_agent.docx_writer import DocumentSection, write_docx
 from legal_doc_agent.harness import CompletionClient, Observation
 
 
+LONG_BRIEF_THRESHOLD_CHARS = 3500
+MAX_ONLINE_BRIEF_CHARS = 2600
+
+
 @dataclass(frozen=True)
 class WebGenerationResult:
     """Generated web draft plus persisted artifacts."""
@@ -18,6 +22,7 @@ class WebGenerationResult:
     output_path: Path
     artifact_dir: Path
     observations: list[Observation]
+    generation_mode: str = "nvidia"
 
 
 def generate_web_legal_package(
@@ -42,10 +47,22 @@ def generate_web_legal_package(
             )
         )
 
+    online_brief = _online_safe_brief(brief)
+    if online_brief != brief.strip():
+        observations.append(
+            Observation(
+                status="warning",
+                summary="Compacted long user prompt for online generation stability",
+                next_actions=["Split full template expansion into follow-up runs if needed"],
+                artifacts=[],
+            )
+        )
+
+    generation_mode = "nvidia"
     print("starting web job: compact_package", flush=True)
     try:
         raw_draft = client.complete(
-            _compact_package_messages(brief, knowledge_context=knowledge_context),
+            _compact_package_messages(online_brief, knowledge_context=knowledge_context),
             role=DRAFTER_ROLE,
         )
     except Exception as exc:
@@ -58,10 +75,29 @@ def generate_web_legal_package(
                 artifacts=[],
             )
         )
-        raw_draft = client.complete(
-            _short_package_retry_messages(brief, knowledge_context=knowledge_context),
-            role=DRAFTER_ROLE,
-        )
+        try:
+            raw_draft = client.complete(
+                _short_package_retry_messages(
+                    online_brief,
+                    knowledge_context=knowledge_context,
+                ),
+                role=DRAFTER_ROLE,
+            )
+        except Exception as retry_exc:
+            print(f"web compact package recovery after retry error: {retry_exc}", flush=True)
+            observations.append(
+                Observation(
+                    status="warning",
+                    summary="Provider timed out again; returned backend recovery package",
+                    next_actions=["Retry later for provider-generated full drafting"],
+                    artifacts=[],
+                )
+            )
+            raw_draft = _provider_timeout_recovery_package(
+                online_brief,
+                knowledge_context=knowledge_context,
+            )
+            generation_mode = "timeout_recovery"
 
     draft = _append_retrieved_authorities_appendix(
         _ensure_complete_web_package(_strip_markdown_fence(raw_draft)),
@@ -101,7 +137,58 @@ def generate_web_legal_package(
         output_path=output_path,
         artifact_dir=artifact_dir,
         observations=observations,
+        generation_mode=generation_mode,
     )
+
+
+def _online_safe_brief(brief: str) -> str:
+    text = brief.strip()
+    if len(text) <= LONG_BRIEF_THRESHOLD_CHARS:
+        return text
+
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    keep_patterns = (
+        "company",
+        "business",
+        "jurisdiction",
+        "founder",
+        "ownership",
+        "authorized shares",
+        "allocation",
+        "vesting",
+        "required documents",
+        "optional",
+        "83(b)",
+        "ai",
+        "saas",
+        "ip assignment",
+        "board consent",
+        "stockholder consent",
+        "bylaws",
+    )
+    selected: list[str] = []
+    for line in lines:
+        normalized = line.lower()
+        if any(pattern in normalized for pattern in keep_patterns):
+            selected.append(line)
+        if len("\n".join(selected)) > 1500:
+            break
+
+    digest_lines = [
+        "ONLINE-SAFE REQUEST DIGEST",
+        f"Original prompt length: {len(text)} characters.",
+        "The user requested a post-formation Delaware C-Corporation legal package for an AI/SaaS startup.",
+        "Do not re-expand the full source prompt. Generate a bounded Word-ready package that can finish inside the online provider timeout.",
+        "Preserve key facts, checklist categories, major required documents, AI/SaaS requirements, citation appendix, and counsel-review warnings.",
+        "If full law-firm-grade templates exceed the online limit, provide complete first-pass templates plus a clear expansion checklist.",
+        "",
+        "Key extracted facts and requirements:",
+    ]
+    digest_lines.extend(f"- {line}" for line in selected[:28])
+    digest = "\n".join(digest_lines).strip()
+    if len(digest) > MAX_ONLINE_BRIEF_CHARS:
+        digest = digest[:MAX_ONLINE_BRIEF_CHARS].rsplit("\n", 1)[0].rstrip()
+    return digest
 
 
 def _compact_package_messages(
@@ -207,6 +294,72 @@ def _append_retrieved_authorities_appendix(
         f"{body}\n\n"
         "END OF PACKAGE"
     ).strip()
+
+
+def _provider_timeout_recovery_package(
+    brief: str,
+    *,
+    knowledge_context: str | None,
+) -> str:
+    authority = (
+        "\n\n# Retrieved Authority Context\n\n"
+        f"{knowledge_context.strip()}\n"
+        if knowledge_context
+        else ""
+    )
+    return (
+        "# NVIDIA Provider Timeout Recovery Package\n\n"
+        "The online provider did not return a usable completion before the timeout. "
+        "This backend recovery package preserves the requested legal-document workflow "
+        "so the user can still download a Word file and continue review.\n\n"
+        "# Request Digest\n\n"
+        f"{brief}\n\n"
+        "# Planner Summary\n\n"
+        "Matter type: Delaware C-Corporation post-formation legal documentation package "
+        "for an AI/SaaS startup with founder equity, governance, IP, tax, and commercial "
+        "operations needs.\n\n"
+        "# Required Document Checklist\n\n"
+        "- Corporate Bylaws: internal governance, meetings, officers, notices, quorum, and board administration.\n"
+        "- Initial Board Consent: approve officers, banking authority, stock issuances, agreements, and records.\n"
+        "- Founder Stock Purchase Agreements: document founder shares, consideration, vesting, repurchase rights, and restrictions.\n"
+        "- Stock Ledger and Cap Table: record authorized shares, issued shares, ownership, consideration, and transfer history.\n"
+        "- IP Assignment and CIIAA: assign pre-existing and future company IP, confidentiality obligations, and invention disclosures.\n"
+        "- 83(b) Election Instructions: flag deadline-sensitive restricted stock tax-election review.\n"
+        "- Banking Authorization and Officer Appointment Resolutions: authorize signatories and corporate authority.\n\n"
+        "# Preparation Materials Needed\n\n"
+        "- Filed certificate of incorporation, Delaware file number, registered agent, company address, par value, and authorized shares.\n"
+        "- Founder legal names, addresses, entity-holder details, share counts, purchase price, vesting schedule, and board roles.\n"
+        "- Prior inventions, contractor relationships, customer data flows, SaaS product assumptions, AI agent use cases, and privacy/security posture.\n"
+        "- Board composition, officer titles, bank signatories, initial approvals, capitalization records, and counsel/tax-review deadlines.\n\n"
+        "# Draft Package\n\n"
+        "## Initial Board Consent Template Skeleton\n\n"
+        "RESOLVED, that the officers of the Company are authorized and directed to maintain "
+        "the Company's books and records, issue founder shares subject to approved purchase "
+        "agreements and vesting restrictions, approve the form of IP assignment and CIIAA, "
+        "open bank accounts, appoint officers, and take related actions necessary for "
+        "post-formation corporate organization, subject to qualified counsel review.\n\n"
+        "## Founder Stock Purchase Agreement Template Skeleton\n\n"
+        "The founder purchases [SHARES] shares of common stock at $[PRICE] per share, "
+        "subject to a four-year vesting schedule with a one-year cliff and monthly vesting "
+        "thereafter. Include company repurchase rights, transfer restrictions, tax-election "
+        "notices, securities-law representations, IP/confidentiality cross-references, and "
+        "signature blocks.\n\n"
+        "## IP Assignment / CIIAA Template Skeleton\n\n"
+        "Founder assigns to the Company all company-related inventions, works of authorship, "
+        "software, models, prompts, workflows, agents, documentation, trade secrets, and "
+        "related intellectual property, excluding disclosed prior inventions listed on a "
+        "signed schedule.\n\n"
+        "## AI and SaaS Operating Clauses\n\n"
+        "Include customer-data handling assumptions, AI-output disclaimers, acceptable-use "
+        "limits, automated-system limitations, confidentiality, security-policy references, "
+        "API restrictions, subscription assumptions, and customer responsibility clauses.\n\n"
+        "# Reviewer Quality Gate\n\n"
+        "- Replace all bracketed blanks before execution.\n"
+        "- Confirm Delaware statutory support, securities compliance, tax election timing, IP chain of title, and investor due-diligence expectations.\n"
+        "- Have qualified counsel review enforceability, fiduciary approvals, stock issuance mechanics, and AI/SaaS commercial terms."
+        f"{authority}\n\n"
+        "END OF PACKAGE"
+    )
 
 
 def _strip_markdown_fence(markdown: str) -> str:

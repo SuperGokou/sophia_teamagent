@@ -74,11 +74,16 @@ class handler(BaseHTTPRequestHandler):
                     "draft": _read_artifact_markdown(result.artifact_dir),
                     "docx_name": result.output_path.name,
                     "docx_base64": _read_docx_base64(result.output_path),
+                    "generation_mode": result.generation_mode,
                     "artifact_id": run_id,
                     "observations": [
                         asdict(observation) for observation in result.observations
                     ],
-                    "message": "Generated with Vercel NVIDIA multi-agent harness.",
+                    "message": (
+                        "Generated provider-timeout recovery package."
+                        if result.generation_mode == "timeout_recovery"
+                        else "Generated with Vercel NVIDIA multi-agent harness."
+                    ),
                 }
             )
         except ConfigurationError as exc:
