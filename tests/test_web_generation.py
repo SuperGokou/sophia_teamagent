@@ -118,7 +118,7 @@ class WebGenerationTests(unittest.TestCase):
         client = CapturingClient()
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            generate_web_legal_package(
+            result = generate_web_legal_package(
                 client=client,
                 brief="Generate a Delaware founder legal package.",
                 output_path=root / "package.docx",
@@ -129,12 +129,18 @@ class WebGenerationTests(unittest.TestCase):
                     "excerpt: Board action may be taken by consent."
                 ),
             )
+            artifact_text = (result.artifact_dir / "web_drafter_package.md").read_text(
+                encoding="utf-8"
+            )
 
         prompt = client.messages[1]["content"]
         self.assertIn("SUPPLEMENTAL LEGAL KNOWLEDGE BASE CONTEXT", prompt)
         self.assertIn("8 Del. C. § 141(f)", prompt)
         self.assertIn("version_date: 2026-06-06", prompt)
         self.assertIn("Do not invent citations", prompt)
+        self.assertIn("# Retrieved Authority Context", artifact_text)
+        self.assertIn("8 Del. C. § 141(f)", artifact_text)
+        self.assertIn("version_date: 2026-06-06", artifact_text)
 
 
 if __name__ == "__main__":

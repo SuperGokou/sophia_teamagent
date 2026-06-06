@@ -63,7 +63,10 @@ def generate_web_legal_package(
             role=DRAFTER_ROLE,
         )
 
-    draft = _ensure_complete_web_package(_strip_markdown_fence(raw_draft))
+    draft = _append_retrieved_authorities_appendix(
+        _ensure_complete_web_package(_strip_markdown_fence(raw_draft)),
+        knowledge_context=knowledge_context,
+    )
     draft_path = artifact_dir / "web_drafter_package.md"
     draft_path.write_text(draft, encoding="utf-8")
     print("finished web job: compact_package", flush=True)
@@ -182,6 +185,28 @@ def _supplemental_knowledge_prompt(knowledge_context: str | None) -> str:
         "Use this context only as retrieved authority support. Do not invent citations. "
         "If a cited issue is not supported by this context, mark it for counsel verification.\n\n"
     )
+
+
+def _append_retrieved_authorities_appendix(
+    markdown: str,
+    *,
+    knowledge_context: str | None,
+) -> str:
+    if not knowledge_context:
+        return markdown
+    if "# Retrieved Authority Context" in markdown:
+        return markdown
+    body = knowledge_context.strip()
+    if not body:
+        return markdown
+    if "END OF PACKAGE" in markdown:
+        markdown = markdown.replace("END OF PACKAGE", "").rstrip()
+    return (
+        f"{markdown}\n\n"
+        "# Retrieved Authority Context\n\n"
+        f"{body}\n\n"
+        "END OF PACKAGE"
+    ).strip()
 
 
 def _strip_markdown_fence(markdown: str) -> str:
