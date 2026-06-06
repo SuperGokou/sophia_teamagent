@@ -65,6 +65,51 @@ class WebKnowledgeContextTests(unittest.TestCase):
 
         self.assertIsNone(context)
 
+    def test_domain_terms_are_prioritized_for_long_briefs(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "legal.sqlite"
+            kb = LegalKnowledgeBase(db_path)
+            kb.initialize()
+            kb.upsert_source(
+                key="us-code-house",
+                name="U.S. Code",
+                jurisdiction="US-Federal",
+                source_url="https://uscode.house.gov/",
+                official_level="official",
+                retrieved_at="2026-06-06T00:00:00Z",
+            )
+            document = kb.upsert_document(
+                source_key="us-code-house",
+                citation="26 U.S.C. § 83(b)",
+                title="83(b) election",
+                jurisdiction="US-Federal",
+                doc_type="statute",
+                version_date="2026-06-06",
+                effective_date="2026-06-06",
+                url="https://uscode.house.gov/view.xhtml?req=(title:26%20section:83%20edition:prelim)",
+            )
+            kb.upsert_section(
+                document_id=document.id,
+                citation="26 U.S.C. § 83(b)",
+                heading="83(b) authority note",
+                text="Authority note for 83(b) election, restricted founder stock, tax filing, and vesting.",
+                path="/title26/83/b",
+                order_index=1,
+            )
+
+            context = build_web_knowledge_context(
+                (
+                    "Company legal name: Very Long Name Automation Inc. "
+                    "Delaware file number: TBD. Founder one and founder two. "
+                    "Special notes: include 83(b) election instructions."
+                ),
+                db_path=db_path,
+            )
+
+        self.assertIsNotNone(context)
+        assert context is not None
+        self.assertIn("26 U.S.C. § 83(b)", context)
+
 
 if __name__ == "__main__":
     unittest.main()

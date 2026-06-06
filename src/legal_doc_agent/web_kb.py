@@ -11,9 +11,10 @@ from legal_doc_agent.legal_kb import LegalKnowledgeBase, SearchHit
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_WEB_KB_PATH = PROJECT_ROOT / "api" / "legal_kb.sqlite"
-DEFAULT_WEB_KB_QUERY_SUFFIX = (
-    " Delaware corporation founder stock board consent stockholder consent "
-    "certificate incorporation bylaws vesting intellectual property assignment"
+DEFAULT_WEB_KB_QUERY_PREFIX = (
+    "83 election restricted stock tax filing Delaware board consent stockholder "
+    "consent founder corporation certificate incorporation bylaws vesting "
+    "intellectual property assignment"
 )
 
 
@@ -36,7 +37,7 @@ def build_web_knowledge_context(
     if not path.exists():
         return None
 
-    query = f"{brief.strip()} {DEFAULT_WEB_KB_QUERY_SUFFIX}".strip()
+    query = f"{DEFAULT_WEB_KB_QUERY_PREFIX} {brief.strip()}".strip()
     if not query:
         return None
 
