@@ -151,6 +151,18 @@ class UiDraftGeneratorTests(unittest.TestCase):
         self.assertIn('updateAgentRuntime("file"', source)
         self.assertIn('updateAgentRuntime("reviewer"', source)
 
+    def test_local_generation_uses_run_status_polling(self) -> None:
+        source = (ROOT / "ui" / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn('generationServiceGenerateStartUrl = useLocalGenerationService', source)
+        self.assertIn('`${generationServiceBaseUrl}/legal-doc/generate/start`', source)
+        self.assertIn('function generationServiceRunStatusUrl(runId)', source)
+        self.assertIn('async function pollBackendGenerationRun', source)
+        self.assertIn("syncAgentRuntimeFromEvents(status.data?.events || [])", source)
+        self.assertIn('status.data?.status === "completed"', source)
+        self.assertIn('status.data?.result', source)
+        self.assertIn("renderedBackendEventKeys = new Set()", source)
+
     def test_brief_textarea_starts_empty(self) -> None:
         html = (ROOT / "ui" / "index.html").read_text(encoding="utf-8")
         match = re.search(r'<textarea id="briefInput"[^>]*>(.*?)</textarea>', html, re.S)

@@ -235,6 +235,7 @@ let activeRunId = 0;
 let runState = "idle";
 let agentRuntimeState = createInitialAgentRuntime();
 let agentEvents = [];
+let renderedBackendEventKeys = new Set();
 let automationTasks = [];
 const conversationDeletedKey = "sophia.conversation.deleted";
 const tokenLedgerKey = "sophia.tokenLedger.v1";
@@ -258,8 +259,12 @@ const generationServiceHealthUrl = useLocalGenerationService
 const generationServiceGenerateUrl = useLocalGenerationService
   ? `${generationServiceBaseUrl}/legal-doc/generate`
   : "/api";
+const generationServiceGenerateStartUrl = useLocalGenerationService
+  ? `${generationServiceBaseUrl}/legal-doc/generate/start`
+  : "/api";
 const generationServiceHealthTimeoutMs = 3500;
 const generationServiceGenerateTimeoutMs = 10 * 60 * 1000;
+const generationServiceStatusPollMs = 1200;
 const generationServiceCommand = "python3 -m legal_doc_agent serve --port 9766";
 const dailyTokenLimit = 10000000;
 const tokenEstimates = {
@@ -425,6 +430,7 @@ function createInitialAgentRuntime() {
 function resetAgentRuntime() {
   agentRuntimeState = createInitialAgentRuntime();
   agentEvents = [];
+  renderedBackendEventKeys = new Set();
   renderAgentLiveStatus();
   updateRunCounters();
 }
@@ -474,7 +480,13 @@ function updateAgentRuntime(agentId, status, activity, extra = {}) {
   updateRunCounters();
 }
 
-function appendAgentEvent(agentId, message, kind = "info") {
+function appendAgentEvent(agentId, message, kind = "info", eventKey = "") {
+  if (eventKey) {
+    if (renderedBackendEventKeys.has(eventKey)) {
+      return;
+    }
+    renderedBackendEventKeys.add(eventKey);
+  }
   const agent = agents.find((item) => item.id === agentId) || agents[0];
   agentEvents = [
     {
@@ -504,7 +516,44 @@ function agentIdForObservation(message) {
   return "planner";
 }
 
+function runtimeStatusForBackendEvent(event) {
+  if (event?.type === "run_completed") {
+    return "done";
+  }
+  if (event?.status === "failed") {
+    return "failed";
+  }
+  if (event?.status === "completed" || event?.status === "success") {
+    return "done";
+  }
+  if (event?.status === "warning") {
+    return "warning";
+  }
+  return "running";
+}
+
+function syncAgentRuntimeFromEvents(events) {
+  if (!Array.isArray(events)) {
+    return;
+  }
+  events.forEach((event) => {
+    const agentId = event.agent_id || agentIdForObservation(event.message || "");
+    const message = String(event.message || "").trim();
+    if (!message) {
+      return;
+    }
+    updateAgentRuntime(agentId, runtimeStatusForBackendEvent(event), message);
+    appendAgentEvent(
+      agentId,
+      message,
+      event.status === "failed" ? "error" : "backend",
+      `${event.run_id || "run"}:${event.event_id || event.type || message}`,
+    );
+  });
+}
+
 function syncAgentRuntimeFromPayload(payload) {
+  syncAgentRuntimeFromEvents(payload?.events || []);
   updateAgentRuntime("planner", "done", "需求结构和交付顺序已确认");
   updateAgentRuntime("browser", "done", "RAG / SQLite FTS5 引用依据已核验");
   updateAgentRuntime("file",
@@ -1007,6 +1056,44 @@ function localGenerationPageIssue() {
   return "";
 }
 
+function generationServiceRunStatusUrl(runId) {
+  return useLocalGenerationService
+    ? `${generationServiceBaseUrl}/legal-doc/runs/${encodeURIComponent(runId)}`
+    : `/api/runs/${encodeURIComponent(runId)}`;
+}
+
+async function pollBackendGenerationRun(runId) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < generationServiceGenerateTimeoutMs) {
+    const status = await getJson(generationServiceRunStatusUrl(runId), {
+      timeoutMs: generationServiceHealthTimeoutMs,
+    });
+    if (!status.ok) {
+      throw new Error(status.data?.message || status.data?.error || "generation_status_unavailable");
+    }
+    syncAgentRuntimeFromEvents(status.data?.events || []);
+    if (status.data?.status === "completed") {
+      const result = status.data?.result;
+      if (!result?.draft) {
+        throw new Error("AI 多 Agent 后端完成了 run，但没有返回文书正文。");
+      }
+      return {
+        ...result,
+        ok: true,
+        run_id: status.data.run_id,
+        status: "completed",
+        events: status.data.events || [],
+      };
+    }
+    if (status.data?.status === "failed") {
+      const message = status.data?.error?.message || "AI 多 Agent 生成失败。";
+      throw new Error(message);
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, generationServiceStatusPollMs));
+  }
+  throw new Error("本机 AI 多 Agent 生成服务超时。请查看服务终端。");
+}
+
 async function requestBackendLegalDraft(brief) {
   const pageIssue = localGenerationPageIssue();
   if (pageIssue) {
@@ -1018,6 +1105,25 @@ async function requestBackendLegalDraft(brief) {
   });
   if (!health.ok) {
     throw new Error("generation_service_unhealthy");
+  }
+
+  if (useLocalGenerationService) {
+    const start = await postJson(generationServiceGenerateStartUrl, {
+      brief,
+    }, {
+      timeoutMs: generationServiceHealthTimeoutMs,
+    });
+    if (!start.ok) {
+      const message = start.data?.message || "AI 多 Agent 生成启动失败。";
+      const error = new Error(message);
+      error.status = start.status;
+      throw error;
+    }
+    syncAgentRuntimeFromEvents(start.data?.events || []);
+    if (!start.data?.run_id) {
+      throw new Error("本机 AI 多 Agent 后端没有返回 run_id。");
+    }
+    return pollBackendGenerationRun(start.data.run_id);
   }
 
   const response = await postJson(generationServiceGenerateUrl, {
@@ -1035,6 +1141,7 @@ async function requestBackendLegalDraft(brief) {
   if (!draft) {
     throw new Error("AI 多 Agent 后端没有返回文书正文。");
   }
+  syncAgentRuntimeFromEvents(response.data?.events || []);
   return response.data;
 }
 
