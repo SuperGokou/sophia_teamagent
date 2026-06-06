@@ -105,6 +105,32 @@ def load_agent_profiles_from_env() -> dict[str, AgentProfile]:
     }
 
 
+def load_web_agent_profiles_from_env() -> dict[str, AgentProfile]:
+    """Load latency-focused profiles for interactive web generation."""
+
+    model = env_value("NVIDIA_WEB_MODEL", "google/gemma-3n-e4b-it") or "google/gemma-3n-e4b-it"
+    default_max_tokens = int(env_value("NVIDIA_WEB_MAX_TOKENS", "768") or "768")
+    drafter_max_tokens = int(
+        env_value("NVIDIA_WEB_DRAFTER_MAX_TOKENS", "1024") or "1024"
+    )
+    profiles: dict[str, AgentProfile] = {}
+    for role, profile in DEFAULT_AGENT_PROFILES.items():
+        max_tokens = drafter_max_tokens if role == DRAFTER_ROLE else default_max_tokens
+        profiles[role] = AgentProfile(
+            role=role,
+            model=model,
+            temperature=min(profile.temperature, 0.7),
+            top_p=min(profile.top_p, 0.8),
+            max_tokens=max_tokens,
+            thinking=None,
+            purpose=profile.purpose,
+            enable_thinking=None,
+            reasoning_budget=None,
+            stream=False,
+        )
+    return profiles
+
+
 class NvidiaAgentRouter:
     """Route completion calls to the NVIDIA model configured for each role."""
 

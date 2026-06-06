@@ -81,7 +81,10 @@ class UiDraftGeneratorTests(unittest.TestCase):
         start_run = source.rindex("async function startLegalDraftRun")
         event_listeners = source.index("runButton.addEventListener", start_run)
         start_run_block = source[start_run:event_listeners]
-        self.assertIn('generationServiceBaseUrl = "http://127.0.0.1:9766"', source)
+        self.assertIn('generationServiceBaseUrl = useLocalGenerationService ? "http://127.0.0.1:9766" : ""', source)
+        self.assertIn('"/api"', source)
+        self.assertIn('generationServiceCommand = "python3 -m legal_doc_agent serve --port 9766"', source)
+        self.assertIn("localGenerationPageIssue", source)
         self.assertIn('googleDocServiceBaseUrl = "http://127.0.0.1:9765"', source)
         self.assertIn("requestBackendLegalDraft(briefSnapshot)", start_run_block)
         self.assertNotIn("startGoogleDocHandoffForRun();", start_run_block)

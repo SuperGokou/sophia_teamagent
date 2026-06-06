@@ -237,11 +237,20 @@ const googleDocServiceHealthUrl = `${googleDocServiceBaseUrl}/health`;
 const googleDocServiceWriteUrl = `${googleDocServiceBaseUrl}/google-doc/write`;
 const googleDocServiceHealthTimeoutMs = 3500;
 const googleDocServiceWriteTimeoutMs = 45000;
-const generationServiceBaseUrl = "http://127.0.0.1:9766";
-const generationServiceHealthUrl = `${generationServiceBaseUrl}/health`;
-const generationServiceGenerateUrl = `${generationServiceBaseUrl}/legal-doc/generate`;
+const localGenerationHosts = new Set(["127.0.0.1", "localhost", "::1"]);
+const useLocalGenerationService =
+  window.location.protocol === "file:"
+  || (window.location.protocol === "http:" && localGenerationHosts.has(window.location.hostname));
+const generationServiceBaseUrl = useLocalGenerationService ? "http://127.0.0.1:9766" : "";
+const generationServiceHealthUrl = useLocalGenerationService
+  ? `${generationServiceBaseUrl}/health`
+  : "/api";
+const generationServiceGenerateUrl = useLocalGenerationService
+  ? `${generationServiceBaseUrl}/legal-doc/generate`
+  : "/api";
 const generationServiceHealthTimeoutMs = 3500;
 const generationServiceGenerateTimeoutMs = 10 * 60 * 1000;
+const generationServiceCommand = "python3 -m legal_doc_agent serve --port 9766";
 const dailyTokenLimit = 10000000;
 const tokenEstimates = {
   planner: { used: 5200, saved: 680 },
@@ -792,10 +801,37 @@ function generationServiceFailureMessage(error) {
   if (error?.name === "AbortError" || error?.message === "request_timeout") {
     return "本机 NVIDIA 多 Agent 生成服务超时。请查看服务终端；不要下载本地 fallback。";
   }
-  return "本机 NVIDIA 多 Agent 生成服务未运行。请启动 python -m legal_doc_agent serve --port 9766；未生成真实文书前不会下载 DOCX。";
+  return `本机 NVIDIA 多 Agent 生成服务未运行。请启动 ${generationServiceCommand}；未生成真实文书前不会下载 DOCX。`;
+}
+
+function missingGeneratedDraftMessage() {
+  if (useLocalGenerationService) {
+    return `还没有真实 NVIDIA 生成结果。请确认 ${generationServiceCommand} 正在运行，然后点击“多 Agent 生成”。`;
+  }
+  return "还没有真实 NVIDIA 生成结果。请先点击“多 Agent 生成”，等待线上 API 返回完成后再下载 DOCX。";
+}
+
+function noFallbackDownloadMessage() {
+  if (useLocalGenerationService) {
+    return "不会下载浏览器本地 fallback。请先运行本机后端并完成“多 Agent 生成”。";
+  }
+  return "不会下载浏览器本地 fallback。请先完成线上 NVIDIA 生成。";
+}
+
+function localGenerationPageIssue() {
+  const protocol = window.location.protocol;
+  if (protocol === "file:") {
+    return "当前页面是 file:// 直接打开的静态文件。请先运行 python3 -m http.server 5173 --bind 127.0.0.1 --directory ui，然后打开 http://127.0.0.1:5173/。";
+  }
+  return "";
 }
 
 async function requestBackendLegalDraft(brief) {
+  const pageIssue = localGenerationPageIssue();
+  if (pageIssue) {
+    throw new Error(pageIssue);
+  }
+
   const health = await getJson(generationServiceHealthUrl, {
     timeoutMs: generationServiceHealthTimeoutMs,
   });
@@ -1339,7 +1375,7 @@ function completeDraftOutput(payload, docUrl = "") {
 
 async function copyGeneratedDraft() {
   if (!generatedDraftText || generatedDraftSource !== "backend") {
-    setBridgeStatus("error", "还没有真实 NVIDIA 多 Agent 生成结果。请先启动后端并点击“多 Agent 生成”。");
+    setBridgeStatus("error", missingGeneratedDraftMessage());
     setGoogleDocStatus("error", "不会复制浏览器 fallback。请先生成真实法律文书。");
     return;
   }
@@ -1651,8 +1687,8 @@ function downloadLocalDocx() {
   }
 
   if (!generatedDraftText || generatedDraftSource !== "backend") {
-    setGoogleDocStatus("error", "还没有真实 NVIDIA 多 Agent 生成结果。请先启动后端并点击“多 Agent 生成”。");
-    setBridgeStatus("error", "不会下载浏览器本地 fallback。请启动 python -m legal_doc_agent serve --port 9766 后重试。");
+    setGoogleDocStatus("error", missingGeneratedDraftMessage());
+    setBridgeStatus("error", noFallbackDownloadMessage());
     return;
   }
 

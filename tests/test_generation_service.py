@@ -68,29 +68,23 @@ class LegalGenerationLocalServiceTests(unittest.TestCase):
             forbidden_spec.write_text("secret", encoding="utf-8")
             captured: dict[str, Path] = {}
 
-            class FakeAgent:
-                def __init__(self, client: object) -> None:
-                    self.client = client
-
-                def generate(
-                    self,
-                    *,
-                    specification_path: Path,
-                    brief: str,
-                    output_path: Path,
-                    artifact_dir: Path,
-                    knowledge_context: str | None = None,
-                ) -> SimpleNamespace:
-                    captured["specification_path"] = specification_path
-                    artifact_dir.mkdir(parents=True)
-                    (artifact_dir / "draft.md").write_text("# Draft", encoding="utf-8")
-                    output_path.parent.mkdir(parents=True, exist_ok=True)
-                    output_path.write_text("docx placeholder", encoding="utf-8")
-                    return SimpleNamespace(
-                        output_path=output_path,
-                        artifact_dir=artifact_dir,
-                        observations=[],
-                    )
+            def fake_generate_web_legal_package(
+                *,
+                client: object,
+                brief: str,
+                output_path: Path,
+                artifact_dir: Path,
+            ) -> SimpleNamespace:
+                captured["brief"] = brief
+                artifact_dir.mkdir(parents=True)
+                (artifact_dir / "draft.md").write_text("# Draft", encoding="utf-8")
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                output_path.write_text("docx placeholder", encoding="utf-8")
+                return SimpleNamespace(
+                    output_path=output_path,
+                    artifact_dir=artifact_dir,
+                    observations=[],
+                )
 
             service = LegalGenerationLocalService(
                 spec_path=allowed_spec,
@@ -100,7 +94,10 @@ class LegalGenerationLocalServiceTests(unittest.TestCase):
             with (
                 patch("legal_doc_agent.generation_service.NvidiaConfig.from_env", return_value=object()),
                 patch("legal_doc_agent.generation_service.NvidiaAgentRouter", return_value=object()),
-                patch("legal_doc_agent.generation_service.LegalDocumentAgent", FakeAgent),
+                patch(
+                    "legal_doc_agent.generation_service.generate_web_legal_package",
+                    fake_generate_web_legal_package,
+                ),
             ):
                 result = service.generate(
                     {
@@ -113,7 +110,10 @@ class LegalGenerationLocalServiceTests(unittest.TestCase):
             self.assertIn("docx_name", result)
             self.assertNotIn("docx_path", result)
             self.assertNotIn("artifact_dir", result)
-            self.assertEqual(captured["specification_path"], allowed_spec.resolve())
+            self.assertEqual(
+                captured["brief"],
+                "Generate a real legal package with sufficient detail.",
+            )
             self.assertIn("# Draft", result["draft"])
 
 

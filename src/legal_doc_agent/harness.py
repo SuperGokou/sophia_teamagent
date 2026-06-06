@@ -96,9 +96,11 @@ class LegalDocumentAgent:
         artifact_dir.mkdir(parents=True, exist_ok=True)
         sections: list[DocumentSection] = []
         for job in jobs:
+            print(f"starting job: {job.job_id} ({job.agent_role})", flush=True)
             content = self._client.complete(messages_for_job(job), role=job.agent_role)
             artifact_path = artifact_dir / f"{job.job_id}.md"
             artifact_path.write_text(content, encoding="utf-8")
+            print(f"finished job: {job.job_id}", flush=True)
             sections.append(DocumentSection(title=job.title, markdown=content))
             observations.append(
                 Observation(
@@ -115,12 +117,14 @@ class LegalDocumentAgent:
             sections,
             knowledge_context=knowledge_context,
         )
+        print(f"starting job: {review_job.job_id} ({review_job.agent_role})", flush=True)
         review_content = self._client.complete(
             messages_for_job(review_job),
             role=review_job.agent_role,
         )
         review_artifact_path = artifact_dir / f"{review_job.job_id}.md"
         review_artifact_path.write_text(review_content, encoding="utf-8")
+        print(f"finished job: {review_job.job_id}", flush=True)
         sections.append(DocumentSection(title=review_job.title, markdown=review_content))
         observations.append(
             Observation(

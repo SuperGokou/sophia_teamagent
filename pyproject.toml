@@ -5,6 +5,7 @@ description = "NVIDIA API-powered agent harness for generating Word legal-docume
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "certifi>=2025.0.0",
     "python-docx>=1.1.0",
 ]
 

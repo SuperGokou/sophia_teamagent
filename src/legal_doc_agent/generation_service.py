@@ -8,15 +8,15 @@ from pathlib import Path
 from typing import Any, Callable
 from uuid import uuid4
 
-from legal_doc_agent.agents import NvidiaAgentRouter
+from legal_doc_agent.agents import NvidiaAgentRouter, load_web_agent_profiles_from_env
 from legal_doc_agent.config import ConfigurationError, NvidiaConfig
-from legal_doc_agent.harness import LegalDocumentAgent
 from legal_doc_agent.local_http import (
     DEFAULT_ALLOWED_ORIGINS,
     read_json_body,
     request_allowed,
     send_json,
 )
+from legal_doc_agent.web_generation import generate_web_legal_package
 
 
 MAX_REQUEST_BYTES = 1_000_000
@@ -57,20 +57,25 @@ class LegalGenerationLocalService:
         if len(brief) < 20:
             raise ValueError("Brief is too short for legal document generation.")
 
-        spec_path = self._spec_path
         run_id = uuid4().hex
         output_path = self._output_dir / f"legal_package_{run_id}.docx"
         artifact_dir = self._output_dir / f"artifacts_{run_id}"
 
         client = NvidiaAgentRouter(
-            base_config=NvidiaConfig.from_env(base_url=self._base_url),
+            base_config=NvidiaConfig.from_env(
+                base_url=self._base_url,
+                timeout_seconds=60,
+            ),
+            profiles=load_web_agent_profiles_from_env(),
         )
-        result = LegalDocumentAgent(client).generate(
-            specification_path=spec_path,
+        print(f"generation started: run_id={run_id}", flush=True)
+        result = generate_web_legal_package(
+            client=client,
             brief=brief,
             output_path=output_path,
             artifact_dir=artifact_dir,
         )
+        print(f"generation finished: run_id={run_id}", flush=True)
         markdown = _read_artifact_markdown(result.artifact_dir)
         return {
             "ok": True,

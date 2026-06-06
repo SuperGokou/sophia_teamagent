@@ -90,6 +90,7 @@ class NvidiaClientTests(unittest.TestCase):
         self.assertEqual(payload["max_tokens"], 4096)
         self.assertNotIn("chat_template_kwargs", payload)
         self.assertFalse(payload["stream"])
+        self.assertIsNotNone(urlopen.call_args.kwargs.get("context"))
 
     @patch("urllib.request.urlopen")
     def test_can_send_thinking_flag_for_models_that_need_it(self, urlopen: Mock) -> None:
