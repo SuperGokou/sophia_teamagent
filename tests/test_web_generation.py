@@ -212,13 +212,38 @@ class WebGenerationTests(unittest.TestCase):
             artifact_text = (result.artifact_dir / "web_drafter_package.md").read_text(
                 encoding="utf-8"
             )
+            doc_text = "\n".join(
+                paragraph.text for paragraph in Document(result.output_path).paragraphs
+            )
             self.assertTrue(result.output_path.exists())
 
         self.assertEqual(len(client.calls), 2)
-        self.assertIn("NVIDIA Provider Timeout Recovery Package", artifact_text)
+        self.assertIn("AI Provider Timeout Recovery Package", artifact_text)
         self.assertIn("Required Document Checklist", artifact_text)
         self.assertIn("END OF PACKAGE", artifact_text)
         self.assertEqual(result.generation_mode, "timeout_recovery")
+        self.assertNotIn("NVIDIA", artifact_text)
+        self.assertNotIn("NVIDIA", doc_text)
+
+    def test_generated_artifacts_do_not_include_provider_branding(self) -> None:
+        client = CapturingClient()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            result = generate_web_legal_package(
+                client=client,
+                brief="Generate a Delaware founder legal package.",
+                output_path=root / "package.docx",
+                artifact_dir=root / "artifacts",
+            )
+            artifact_text = (result.artifact_dir / "web_drafter_package.md").read_text(
+                encoding="utf-8"
+            )
+            doc_text = "\n".join(
+                paragraph.text for paragraph in Document(result.output_path).paragraphs
+            )
+
+        self.assertNotIn("NVIDIA", artifact_text)
+        self.assertNotIn("NVIDIA", doc_text)
 
 
 if __name__ == "__main__":

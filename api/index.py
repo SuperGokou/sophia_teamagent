@@ -85,7 +85,7 @@ class handler(BaseHTTPRequestHandler):
                     "message": (
                         "Generated provider-timeout recovery package."
                         if result.generation_mode == "timeout_recovery"
-                        else "Generated with Vercel NVIDIA multi-agent harness."
+                        else "Generated with Vercel AI multi-agent harness."
                     ),
                 }
             )
@@ -96,7 +96,7 @@ class handler(BaseHTTPRequestHandler):
                     "ok": False,
                     "error": "configuration",
                     "message": (
-                        "NVIDIA service is not configured. Set NVIDIA_API_KEY "
+                        "AI generation service is not configured. Set the provider API key "
                         "in the Vercel project environment."
                     ),
                 },
@@ -114,7 +114,7 @@ class handler(BaseHTTPRequestHandler):
                     "ok": False,
                     "error": "provider",
                     "message": (
-                        "Online NVIDIA generation failed. Check Vercel runtime "
+                        "Online AI generation failed. Check Vercel runtime "
                         "logs for provider details."
                     ),
                 },

@@ -99,9 +99,11 @@ def generate_web_legal_package(
             )
             generation_mode = "timeout_recovery"
 
-    draft = _append_retrieved_authorities_appendix(
-        _ensure_complete_web_package(_strip_markdown_fence(raw_draft)),
-        knowledge_context=knowledge_context,
+    draft = _strip_provider_branding(
+        _append_retrieved_authorities_appendix(
+            _ensure_complete_web_package(_strip_markdown_fence(raw_draft)),
+            knowledge_context=knowledge_context,
+        )
     )
     draft_path = artifact_dir / "web_drafter_package.md"
     draft_path.write_text(draft, encoding="utf-8")
@@ -118,9 +120,9 @@ def generate_web_legal_package(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     write_docx(
         title="Web Legal Document Package",
-        subtitle="NVIDIA-assisted draft for qualified counsel review",
+        subtitle="AI-assisted draft for qualified counsel review",
         sections=[
-            DocumentSection(title="NVIDIA Web Legal Package", markdown=draft),
+            DocumentSection(title="AI Legal Package", markdown=draft),
         ],
         output_path=output_path,
     )
@@ -296,6 +298,10 @@ def _append_retrieved_authorities_appendix(
     ).strip()
 
 
+def _strip_provider_branding(markdown: str) -> str:
+    return re.sub(r"\bNVIDIA\b", "AI provider", markdown)
+
+
 def _provider_timeout_recovery_package(
     brief: str,
     *,
@@ -308,7 +314,7 @@ def _provider_timeout_recovery_package(
         else ""
     )
     return (
-        "# NVIDIA Provider Timeout Recovery Package\n\n"
+        "# AI Provider Timeout Recovery Package\n\n"
         "The online provider did not return a usable completion before the timeout. "
         "This backend recovery package preserves the requested legal-document workflow "
         "so the user can still download a Word file and continue review.\n\n"

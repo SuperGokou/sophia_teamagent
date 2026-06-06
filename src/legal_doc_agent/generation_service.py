@@ -97,7 +97,7 @@ class LegalGenerationLocalService:
             "message": (
                 "Generated provider-timeout recovery package."
                 if result.generation_mode == "timeout_recovery"
-                else "Generated with local NVIDIA multi-agent harness."
+                else "Generated with local AI multi-agent harness."
             ),
         }
 
@@ -163,7 +163,7 @@ def _make_handler(service: LegalGenerationLocalService) -> type[BaseHTTPRequestH
                     {
                         "ok": False,
                         "error": "configuration",
-                        "message": "NVIDIA service is not configured. Set NVIDIA_API_KEY and restart the local service.",
+                        "message": "AI generation service is not configured. Set the provider API key and restart the local service.",
                     },
                     status=503,
                 )
@@ -175,7 +175,7 @@ def _make_handler(service: LegalGenerationLocalService) -> type[BaseHTTPRequestH
                     {
                         "ok": False,
                         "error": "provider",
-                        "message": "NVIDIA generation failed. Check the local service terminal for details.",
+                        "message": "AI generation failed. Check the local service terminal for details.",
                     },
                     status=500,
                 )

@@ -20,7 +20,7 @@ const agents = [
   {
     id: "browser",
     name: "Browser Agent",
-    model: "nvidia/nemotron-3-super-120b-a12b",
+    model: "AI legal reasoning model",
     role: "检索核验",
     detail: "对照本地 RAG、SQLite FTS5、引用依据和版本日期。",
     work: "检查 Google Doc/Chrome 接管状态，核验引用、版本日期和文书格式。",
@@ -803,23 +803,23 @@ function googleDocServiceFailureMessage(error) {
 
 function generationServiceFailureMessage(error) {
   if (error?.name === "AbortError" || error?.message === "request_timeout") {
-    return "本机 NVIDIA 多 Agent 生成服务超时。请查看服务终端；不要下载本地 fallback。";
+    return "本机 AI 多 Agent 生成服务超时。请查看服务终端；不要下载本地 fallback。";
   }
-  return `本机 NVIDIA 多 Agent 生成服务未运行。请启动 ${generationServiceCommand}；未生成真实文书前不会下载 DOCX。`;
+  return `本机 AI 多 Agent 生成服务未运行。请启动 ${generationServiceCommand}；未生成真实文书前不会下载 DOCX。`;
 }
 
 function missingGeneratedDraftMessage() {
   if (useLocalGenerationService) {
-    return `还没有真实 NVIDIA 生成结果。请确认 ${generationServiceCommand} 正在运行，然后点击“多 Agent 生成”。`;
+    return `还没有真实 AI 生成结果。请确认 ${generationServiceCommand} 正在运行，然后点击“多 Agent 生成”。`;
   }
-  return "还没有真实 NVIDIA 生成结果。请先点击“多 Agent 生成”，等待线上 API 返回完成后再下载 DOCX。";
+  return "还没有真实 AI 生成结果。请先点击“多 Agent 生成”，等待线上 API 返回完成后再下载 DOCX。";
 }
 
 function noFallbackDownloadMessage() {
   if (useLocalGenerationService) {
     return "不会下载浏览器本地 fallback。请先运行本机后端并完成“多 Agent 生成”。";
   }
-  return "不会下载浏览器本地 fallback。请先完成线上 NVIDIA 生成。";
+  return "不会下载浏览器本地 fallback。请先完成线上 AI 生成。";
 }
 
 function localGenerationPageIssue() {
@@ -849,14 +849,14 @@ async function requestBackendLegalDraft(brief) {
     timeoutMs: generationServiceGenerateTimeoutMs,
   });
   if (!response.ok) {
-    const message = response.data?.message || "NVIDIA 多 Agent 生成失败。";
+    const message = response.data?.message || "AI 多 Agent 生成失败。";
     const error = new Error(message);
     error.status = response.status;
     throw error;
   }
   const draft = String(response.data?.draft || "").trim();
   if (!draft) {
-    throw new Error("NVIDIA 多 Agent 后端没有返回文书正文。");
+    throw new Error("AI 多 Agent 后端没有返回文书正文。");
   }
   return response.data;
 }
@@ -979,7 +979,7 @@ clearExpiredChromeBridgeRequest();
 function writeChromeBridgeRequest(docUrl, draft, runId) {
   if (!draft || generatedDraftSource !== "backend" || runId !== activeRunId) {
     clearChromeBridgeRequest();
-    setBridgeStatus("warn", "尚未生成真实 NVIDIA 多 Agent 正文，不会创建 Google Doc 接管请求。");
+    setBridgeStatus("warn", "尚未生成真实 AI 多 Agent 正文，不会创建 Google Doc 接管请求。");
     return false;
   }
   const request = {
@@ -1372,16 +1372,16 @@ function completeDraftOutput(payload, docUrl = "") {
   const timeoutRecovery = payload?.generation_mode === "timeout_recovery";
   draftOutput.hidden = false;
   draftOutputMeta.textContent = timeoutRecovery
-    ? "NVIDIA provider 两次超时；已生成后端恢复 Word 包，可下载使用或稍后重试完整 NVIDIA 草稿。"
+    ? "AI provider 两次超时；已生成后端恢复 Word 包，可下载使用或稍后重试完整 AI 草稿。"
     : docUrl
-      ? "Reviewer 已完成质量门。真实 NVIDIA 多 Agent 正文已生成，可写入 Google Doc 或下载 DOCX。"
-      : "Reviewer 已完成质量门。真实 NVIDIA 多 Agent 正文已生成，可下载本地 DOCX。";
+      ? "Reviewer 已完成质量门。真实 AI 多 Agent 正文已生成，可写入 Google Doc 或下载 DOCX。"
+      : "Reviewer 已完成质量门。真实 AI 多 Agent 正文已生成，可下载本地 DOCX。";
   if (generatedDocxName) {
     setBridgeStatus(
       timeoutRecovery ? "warn" : "ok",
       timeoutRecovery
         ? `已生成超时恢复 Word：${generatedDocxName}`
-        : `NVIDIA 多 Agent 已生成 Word：${generatedDocxName}`,
+        : `AI 多 Agent 已生成 Word：${generatedDocxName}`,
     );
   }
 }
@@ -2112,7 +2112,7 @@ async function startLegalDraftRun() {
   let progress = 12;
   activate(agents[0].id);
   setProgress(progress);
-  setGoogleDocStatus("warn", "正在连接本机 NVIDIA 多 Agent 生成服务...");
+  setGoogleDocStatus("warn", "正在连接本机 AI 多 Agent 生成服务...");
   setBridgeStatus("warn", "需要 python -m legal_doc_agent serve --port 9766 正在运行；不会使用浏览器 fallback。");
 
   const animationTimer = window.setInterval(() => {
@@ -2156,8 +2156,8 @@ async function startLegalDraftRun() {
       setGoogleDocStatus(
         payload?.generation_mode === "timeout_recovery" ? "warn" : "ok",
         payload?.generation_mode === "timeout_recovery"
-          ? "NVIDIA provider 超时；已生成后端恢复 DOCX，可下载或稍后重试完整草稿。"
-          : "真实 NVIDIA 多 Agent 文书已生成；可下载本地 DOCX。",
+          ? "AI provider 超时；已生成后端恢复 DOCX，可下载或稍后重试完整草稿。"
+          : "真实 AI 多 Agent 文书已生成；可下载本地 DOCX。",
       );
     }
   } catch (error) {
