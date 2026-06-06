@@ -926,17 +926,17 @@ function openGoogleDocLink({ monitor = false } = {}) {
     if (openedWindow && saved) {
       setBridgeStatus(
         "ok",
-        "已打开 Google Doc，并创建 Chrome 接管请求；插件连接后可检查 Editor 权限并执行法律版式整理。",
+        "已打开 Google Doc，并创建接管请求；如需自动写入，请启动本机 Google OAuth 服务。",
       );
     } else if (openedWindow) {
       setBridgeStatus(
         "warn",
-        "已打开 Google Doc，但当前浏览器没有保存接管请求。请运行 Chrome bridge/后端 OAuth 服务，或先复制正文/下载 DOCX。",
+        "已打开 Google Doc，但当前浏览器没有保存接管请求。请启动本机 Google OAuth 服务，或先复制正文/下载 DOCX。",
       );
     } else if (saved) {
-      setBridgeStatus("warn", "已创建 Chrome 接管请求，但浏览器拦截了新标签；请点“打开链接”。");
+      setBridgeStatus("warn", "已创建 Google Doc 接管请求，但浏览器拦截了新标签；请点“打开链接”。");
     } else {
-      setBridgeStatus("warn", "无法创建 Chrome 接管请求。请运行 Chrome bridge/后端 OAuth 服务，或先复制正文/下载 DOCX。");
+      setBridgeStatus("warn", "无法创建 Google Doc 接管请求。请启动本机 Google OAuth 服务，或先复制正文/下载 DOCX。");
     }
   } else {
     setBridgeStatus(
@@ -979,7 +979,7 @@ clearExpiredChromeBridgeRequest();
 function writeChromeBridgeRequest(docUrl, draft, runId) {
   if (!draft || generatedDraftSource !== "backend" || runId !== activeRunId) {
     clearChromeBridgeRequest();
-    setBridgeStatus("warn", "尚未生成真实 NVIDIA 多 Agent 正文，不会创建 Chrome 接管请求。");
+    setBridgeStatus("warn", "尚未生成真实 NVIDIA 多 Agent 正文，不会创建 Google Doc 接管请求。");
     return false;
   }
   const request = {
@@ -1006,7 +1006,7 @@ function writeChromeBridgeRequest(docUrl, draft, runId) {
     window.setTimeout(clearExpiredChromeBridgeRequest, chromeBridgeRequestTtlMs + 1000);
     return true;
   } catch {
-    setBridgeStatus("warn", "Google Doc 已打开，但当前浏览器不允许保存 Chrome 接管请求。");
+    setBridgeStatus("warn", "Google Doc 已打开，但当前浏览器不允许保存接管请求。");
     return false;
   }
 }
@@ -1022,16 +1022,16 @@ function startGoogleDocHandoffForRun({ docUrl, draft, runId } = {}) {
   lastBridgeRequestSaved = saved;
   const openedWindow = window.open(docUrl, "_blank", "noopener,noreferrer");
   if (openedWindow && saved) {
-    setBridgeStatus("ok", "已打开 Google Doc，并创建 Chrome 接管请求；生成完成后插件/后端可继续写入和排版。");
+    setBridgeStatus("ok", "已打开 Google Doc，并创建接管请求；生成完成后本机 Google OAuth 服务可继续写入和排版。");
   } else if (openedWindow) {
     setBridgeStatus(
       "warn",
-      "已打开 Google Doc，但当前浏览器没有保存接管请求。请运行 Chrome bridge/后端 OAuth 服务，或先复制正文/下载 DOCX。",
+      "已打开 Google Doc，但当前浏览器没有保存接管请求。请启动本机 Google OAuth 服务，或先复制正文/下载 DOCX。",
     );
   } else if (saved) {
-    setBridgeStatus("warn", "已创建 Chrome 接管请求，但新标签被拦截；Google Doc 不会自动显示变化，请点“打开链接”。");
+    setBridgeStatus("warn", "已创建 Google Doc 接管请求，但新标签被拦截；Google Doc 不会自动显示变化，请点“打开链接”。");
   } else {
-    setBridgeStatus("warn", "无法创建 Chrome 接管请求。请运行 Chrome bridge/后端 OAuth 服务，或先复制正文/下载 DOCX。");
+    setBridgeStatus("warn", "无法创建 Google Doc 接管请求。请启动本机 Google OAuth 服务，或先复制正文/下载 DOCX。");
   }
   return saved;
 }
@@ -2044,7 +2044,7 @@ function prepareNewConversation() {
   updateRunCounters();
   updateTokenDisplay();
   setGoogleDocStatus("warn", "请输入法律文书需求；如需写入 Google Doc，请先粘贴可编辑链接。");
-  setBridgeStatus("warn", "有 Google Doc 链接时，多 Agent 生成会创建接管请求；真实写入需要 Chrome 插件或后端服务。");
+  setBridgeStatus("warn", "Google Doc 写入优先使用本机 OAuth 服务；无需打开浏览器扩展页面。");
   briefInput.focus();
 }
 

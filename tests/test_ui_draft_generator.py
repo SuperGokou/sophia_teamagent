@@ -126,3 +126,13 @@ class UiDraftGeneratorTests(unittest.TestCase):
         self.assertIn("doneCount.textContent = String(agents.length)", source)
         self.assertIn("step = Math.min(agents.length - 1, step + 1)", source)
         self.assertNotIn("step = (step + 1) % agents.length", source)
+
+    def test_google_doc_handoff_copy_does_not_require_chrome_extension(self) -> None:
+        source = (ROOT / "ui" / "app.js").read_text(encoding="utf-8")
+        html = (ROOT / "ui" / "index.html").read_text(encoding="utf-8")
+
+        self.assertIn("Google Doc 接管请求", html)
+        self.assertNotIn("Chrome 监控编辑", html)
+        self.assertNotIn("Playwright", source)
+        self.assertNotIn("Chrome bridge", source)
+        self.assertNotIn("插件", source)

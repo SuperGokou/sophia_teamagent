@@ -175,11 +175,11 @@ Special notes:</textarea>
               </button>
               <button class="secondary-action" type="button" id="googleDocCheckButton">检查编辑权限</button>
               <button class="secondary-action" type="button" id="openGoogleDocButton">打开链接</button>
-              <button class="secondary-action" type="button" id="chromeMonitorButton">Chrome 监控编辑</button>
+              <button class="secondary-action" type="button" id="chromeMonitorButton">Google Doc 接管请求</button>
               <button class="secondary-action" type="button" id="downloadDocxButton">本地 DOCX</button>
             </div>
             <p class="bridge-status" id="bridgeStatus" aria-live="polite">
-              有 Google Doc 链接时，多 Agent 生成会创建接管请求；真实写入需要 Chrome 插件或后端服务。
+              Google Doc 写入优先使用本机 OAuth 服务；无需打开浏览器扩展页面。
             </p>
           </div>
           <p class="doc-status" id="googleDocStatus" aria-live="polite">
@@ -475,6 +475,6 @@ Special notes:</textarea>
       </main>
     </div>
 
-    <script src="./app.js?v=20260606-processing-state"></script>
+    <script src="./app.js?v=20260606-google-doc-handoff"></script>
   </body>
 </html>
