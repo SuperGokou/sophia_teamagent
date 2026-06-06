@@ -451,6 +451,7 @@ function agentStatusLabel(status) {
   return {
     idle: "等待",
     queued: "排队",
+    tracking: "确认中",
     running: "处理中",
     done: "已完成",
     failed: "失败",
@@ -2448,7 +2449,7 @@ async function startLegalDraftRun() {
     }
     const previousPhase = livePhases[step];
     if (previousPhase) {
-      updateAgentRuntime(previousPhase.agentId, "done", "该阶段已提交给下一位 Agent");
+      updateAgentRuntime(previousPhase.agentId, "tracking", "等待后端真实事件确认；完成后会自动标记。");
     }
     step = Math.min(livePhases.length - 1, step + 1);
     const currentPhase = livePhases[step];

@@ -151,6 +151,16 @@ class UiDraftGeneratorTests(unittest.TestCase):
         self.assertIn('updateAgentRuntime("file"', source)
         self.assertIn('updateAgentRuntime("reviewer"', source)
 
+    def test_frontend_phase_timer_does_not_fake_agent_completion(self) -> None:
+        source = (ROOT / "ui" / "app.js").read_text(encoding="utf-8")
+        start_run = source.rindex("async function startLegalDraftRun")
+        request_block = source[start_run:source.index("try {", start_run)]
+
+        self.assertNotIn('updateAgentRuntime(previousPhase.agentId, "done"', request_block)
+        self.assertNotIn("该阶段已提交给下一位 Agent", request_block)
+        self.assertIn('"tracking"', source)
+        self.assertIn("等待后端真实事件确认", request_block)
+
     def test_local_generation_uses_run_status_polling(self) -> None:
         source = (ROOT / "ui" / "app.js").read_text(encoding="utf-8")
 

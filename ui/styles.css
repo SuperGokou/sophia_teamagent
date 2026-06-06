@@ -1955,6 +1955,11 @@ svg {
   box-shadow: 0 0 0 5px rgba(65, 208, 184, 0.14);
 }
 
+.agent-live-card.is-tracking > i {
+  background: #d6ba7c;
+  box-shadow: 0 0 0 5px rgba(214, 186, 124, 0.14);
+}
+
 .agent-live-card.is-done > i {
   background: #75ad76;
 }
