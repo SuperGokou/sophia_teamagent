@@ -623,7 +623,7 @@ function renderAgentLiveStatus() {
           </article>
         `)
         .join("")
-    : '<p class="agent-event-empty">点击“多 Agent 生成”后显示实时事件。</p>';
+    : '<p class="agent-event-empty">点击“生成 Word 文书”后显示实时事件。</p>';
 }
 
 function createAutomationId() {
@@ -1036,14 +1036,14 @@ function generationServiceFailureMessage(error) {
 
 function missingGeneratedDraftMessage() {
   if (useLocalGenerationService) {
-    return `还没有真实 AI 生成结果。请确认 ${generationServiceCommand} 正在运行，然后点击“多 Agent 生成”。`;
+    return `还没有真实 AI 生成结果。请确认 ${generationServiceCommand} 正在运行，然后点击“生成 Word 文书”。`;
   }
-  return "还没有真实 AI 生成结果。请先点击“多 Agent 生成”，等待线上 API 返回完成后再下载 DOCX。";
+  return "还没有真实 AI 生成结果。请先点击“生成 Word 文书”，等待线上 API 返回完成后再下载 DOCX。";
 }
 
 function noFallbackDownloadMessage() {
   if (useLocalGenerationService) {
-    return "不会下载浏览器本地 fallback。请先运行本机后端并完成“多 Agent 生成”。";
+    return "不会下载浏览器本地 fallback。请先运行本机后端并完成“生成 Word 文书”。";
   }
   return "不会下载浏览器本地 fallback。请先完成线上 AI 生成。";
 }
@@ -2001,7 +2001,7 @@ function downloadLocalDocx() {
   }
 
   if (!generatedDocxBase64) {
-    setGoogleDocStatus("error", "后端没有返回真实 Word 文件。请重新点击“多 Agent 生成”。");
+    setGoogleDocStatus("error", "后端没有返回真实 Word 文件。请重新点击“生成 Word 文书”。");
     setBridgeStatus("error", "不会下载 Markdown fallback；必须使用后端生成的法律文书 DOCX。");
     return;
   }
@@ -2393,7 +2393,9 @@ async function startLegalDraftRun() {
   resetAgentRuntime();
   showProcessingConversationDetail();
   generateLegalButton.disabled = true;
-  sendToAgentButton.disabled = true;
+  if (sendToAgentButton) {
+    sendToAgentButton.disabled = true;
+  }
   officeStage.classList.add("is-running");
   updateRunCounters();
 
@@ -2513,28 +2515,37 @@ async function startLegalDraftRun() {
     draftOutput.hidden = true;
     const message = generationRunFailureMessage(error);
     setGoogleDocStatus("error", message);
-    setBridgeStatus("error", message);
+    setBridgeStatus(
+      "error",
+      useLocalGenerationService
+        ? "本地模式需要先启动后端服务；启动后再点击“生成 Word 文书”。"
+        : "线上生成失败；请查看右侧 Agent 事件或稍后重试。",
+    );
   } finally {
     if (runId === activeRunId) {
       generateLegalButton.disabled = false;
-      sendToAgentButton.disabled = false;
+      if (sendToAgentButton) {
+        sendToAgentButton.disabled = false;
+      }
     }
   }
 }
 
 function sendBriefToAgent() {
-  setGoogleDocStatus("warn", "已发送给 Planner，正在启动多 Agent 法律文书流程。");
+  setGoogleDocStatus("warn", "正在启动法律文书生成流程。");
   startLegalDraftRun();
 }
 
 runButton.addEventListener("click", prepareNewConversation);
 generateLegalButton.addEventListener("click", startLegalDraftRun);
-sendToAgentButton.addEventListener("click", sendBriefToAgent);
+if (sendToAgentButton) {
+  sendToAgentButton.addEventListener("click", sendBriefToAgent);
+}
 copyDraftButton.addEventListener("click", copyGeneratedDraft);
 briefInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
     event.preventDefault();
-    sendBriefToAgent();
+    startLegalDraftRun();
   }
 });
 googleDocCheckButton.addEventListener("click", checkGoogleDocLink);

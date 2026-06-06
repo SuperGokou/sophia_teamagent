@@ -1427,32 +1427,6 @@ svg {
   font-weight: 700;
 }
 
-.send-agent-button {
-  height: 34px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  padding: 0 12px;
-  border: 1px solid rgba(19, 129, 113, 0.2);
-  border-radius: 999px;
-  color: #fff;
-  background: #0d8f7b;
-  box-shadow: 0 8px 20px rgba(13, 143, 123, 0.24);
-  font-size: 12px;
-  font-weight: 900;
-  line-height: 1;
-}
-
-.send-agent-button:hover {
-  background: #087564;
-}
-
-.send-agent-button svg {
-  width: 16px;
-  height: 16px;
-}
-
 .delivery-panel {
   min-width: 0;
   display: grid;
@@ -2492,20 +2466,10 @@ textarea:focus-visible {
 
   .draft-field textarea {
     height: 82px;
-    padding-right: 52px;
-  }
-
-  .send-agent-button {
-    width: 38px;
-    padding: 0;
   }
 
   .draft-submit-row > span {
     font-size: 11px;
-  }
-
-  .send-agent-button span {
-    display: none;
   }
 
   .draft-output {

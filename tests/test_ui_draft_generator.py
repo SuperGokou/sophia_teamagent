@@ -163,6 +163,18 @@ class UiDraftGeneratorTests(unittest.TestCase):
         self.assertIn('status.data?.result', source)
         self.assertIn("renderedBackendEventKeys = new Set()", source)
 
+    def test_prompt_entry_has_one_clear_generation_action(self) -> None:
+        source = (ROOT / "ui" / "app.js").read_text(encoding="utf-8")
+        html = (ROOT / "ui" / "index.html").read_text(encoding="utf-8")
+
+        self.assertIn("Ctrl + Enter 开始生成 Word 文书", html)
+        self.assertIn("生成 Word 文书", html)
+        self.assertNotIn("发送给 Agent", html)
+        self.assertNotIn('id="sendToAgentButton"', html)
+        self.assertIn('document.querySelector("#sendToAgentButton")', source)
+        self.assertIn("if (sendToAgentButton) {", source)
+        self.assertIn("startLegalDraftRun();", source)
+
     def test_brief_textarea_starts_empty(self) -> None:
         html = (ROOT / "ui" / "index.html").read_text(encoding="utf-8")
         match = re.search(r'<textarea id="briefInput"[^>]*>(.*?)</textarea>', html, re.S)

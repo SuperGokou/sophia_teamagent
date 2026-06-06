@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Sophia TeamAgent</title>
     <link rel="icon" type="image/jpeg" href="./assets/site-logo.jpg" />
-    <link rel="stylesheet" href="./styles.css?v=20260606-live-agent-status" />
+    <link rel="stylesheet" href="./styles.css?v=20260606-single-generate-action" />
   </head>
   <body>
     <div class="app-shell">
@@ -150,11 +150,7 @@
             <label for="briefInput">法律文书需求</label>
             <textarea id="briefInput" spellcheck="false" placeholder="粘贴或输入法律文书需求"></textarea>
             <div class="draft-submit-row">
-              <span>Ctrl + Enter 发送给 Agent</span>
-              <button class="send-agent-button" type="button" id="sendToAgentButton" title="发送给 Agent（Ctrl+Enter）" aria-label="发送给 Agent">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
-                <span>发送给 Agent</span>
-              </button>
+              <span>Ctrl + Enter 开始生成 Word 文书</span>
             </div>
           </div>
           <div class="delivery-panel">
@@ -165,7 +161,7 @@
             <div class="draft-actions">
               <button class="primary-action" type="button" id="generateLegalButton">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
-                多 Agent 生成
+                生成 Word 文书
               </button>
               <button class="secondary-action" type="button" id="googleDocCheckButton">检查编辑权限</button>
               <button class="secondary-action" type="button" id="openGoogleDocButton">打开链接</button>
@@ -481,6 +477,6 @@
       </main>
     </div>
 
-    <script src="./app.js?v=20260606-live-agent-status"></script>
+    <script src="./app.js?v=20260606-single-generate-action"></script>
   </body>
 </html>
