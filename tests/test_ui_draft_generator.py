@@ -151,6 +151,19 @@ class UiDraftGeneratorTests(unittest.TestCase):
         self.assertIn('updateAgentRuntime("file"', source)
         self.assertIn('updateAgentRuntime("reviewer"', source)
 
+    def test_agent_status_panel_is_compact_and_not_duplicated(self) -> None:
+        source = (ROOT / "ui" / "app.js").read_text(encoding="utf-8")
+        html = (ROOT / "ui" / "index.html").read_text(encoding="utf-8")
+        styles = (ROOT / "ui" / "styles.css").read_text(encoding="utf-8")
+
+        self.assertNotIn('id="agentWorkFeed"', html)
+        self.assertIn('class="agent-live-row', source)
+        self.assertNotIn('class="agent-live-card', source)
+        live_render = source[source.index("function renderAgentLiveStatus"):source.index("function agentStatusLabel")]
+        self.assertNotIn("agent.model", live_render)
+        self.assertIn(".agent-live-row", styles)
+        self.assertNotIn(".agent-live-card", styles)
+
     def test_frontend_phase_timer_does_not_fake_agent_completion(self) -> None:
         source = (ROOT / "ui" / "app.js").read_text(encoding="utf-8")
         start_run = source.rindex("async function startLegalDraftRun")

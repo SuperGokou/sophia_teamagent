@@ -599,16 +599,15 @@ function renderAgentLiveStatus() {
 
   agentLiveList.innerHTML = agentRuntimeState
     .map((agent) => `
-      <article class="agent-live-card is-${escapeHtml(agent.status)}">
+      <article class="agent-live-row is-${escapeHtml(agent.status)}">
         <i aria-hidden="true"></i>
         <div>
           <header>
             <strong>${escapeHtml(agent.name)}</strong>
-            <em>${escapeHtml(agentStatusLabel(agent.status))}</em>
+            <span>${escapeHtml(agentStatusLabel(agent.status))}</span>
+            <em>${escapeHtml(formatAgentElapsed(agent))}</em>
           </header>
-          <span>${escapeHtml(agent.role)} · ${escapeHtml(agent.step)}</span>
           <p>${escapeHtml(agent.activity)}</p>
-          <small>${escapeHtml(agent.model)} · ${escapeHtml(formatAgentElapsed(agent))}</small>
         </div>
       </article>
     `)
