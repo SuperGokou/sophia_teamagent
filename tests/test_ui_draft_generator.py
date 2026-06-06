@@ -108,3 +108,21 @@ class UiDraftGeneratorTests(unittest.TestCase):
         self.assertIn("docxBase64ToBlob(generatedDocxBase64)", download_block)
         self.assertNotIn("createLocalDocxBlob(generatedDraftText)", download_block)
         self.assertNotIn("completeDraftOutput();", download_block)
+
+    def test_processing_panel_starts_idle_and_tracks_agent_count(self) -> None:
+        source = (ROOT / "ui" / "app.js").read_text(encoding="utf-8")
+        html = (ROOT / "ui" / "index.html").read_text(encoding="utf-8")
+
+        self.assertIn('<strong id="runningCount">0</strong>', html)
+        self.assertIn('<strong id="totalCount">4</strong>', html)
+        self.assertIn('<em id="runStatus">待输入</em>', html)
+        self.assertIn('<span id="conversationTimeLabel">未开始</span>', html)
+        self.assertIn("等待生成文书", html)
+        self.assertNotIn("02:52 05/31", html)
+
+        self.assertIn('let runState = "idle"', source)
+        self.assertIn('return runState === "running";', source)
+        self.assertIn("totalCount.textContent = String(agents.length)", source)
+        self.assertIn("doneCount.textContent = String(agents.length)", source)
+        self.assertIn("step = Math.min(agents.length - 1, step + 1)", source)
+        self.assertNotIn("step = (step + 1) % agents.length", source)

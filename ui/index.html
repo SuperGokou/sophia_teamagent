@@ -219,7 +219,7 @@ Special notes:</textarea>
         <section class="detail-panel">
           <div class="count-strip">
             <div>
-              <strong id="runningCount">1</strong>
+              <strong id="runningCount">0</strong>
               <span>进行中</span>
             </div>
             <div>
@@ -227,7 +227,7 @@ Special notes:</textarea>
               <span>已完成</span>
             </div>
             <div>
-              <strong id="totalCount">1</strong>
+              <strong id="totalCount">4</strong>
               <span>总计</span>
             </div>
           </div>
@@ -235,15 +235,15 @@ Special notes:</textarea>
           <div class="conversation-entry" id="conversationEntry">
             <button class="conversation-row" type="button" id="conversationRow" aria-expanded="false" aria-controls="conversationOpenCard">
               <div>
-                <strong>正在处理细节</strong>
+                <strong>等待生成文书</strong>
                 <span id="conversationTokenLabel">累计Token消耗0</span>
               </div>
               <div>
-                <em id="runStatus">处理中</em>
-                <span>02:52 05/31</span>
+                <em id="runStatus">待输入</em>
+                <span id="conversationTimeLabel">未开始</span>
               </div>
             </button>
-            <div class="conversation-progress" id="conversationProgress" role="progressbar" aria-label="处理进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="18">
+            <div class="conversation-progress" id="conversationProgress" role="progressbar" aria-label="处理进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="6">
               <span id="conversationProgressBar"></span>
             </div>
             <button class="conversation-delete" type="button" id="conversationDelete" aria-label="删除对话" title="删除对话">
@@ -252,8 +252,8 @@ Special notes:</textarea>
               </svg>
             </button>
             <div class="conversation-open-card" id="conversationOpenCard" hidden>
-              <strong>正在处理细节</strong>
-              <span>Planner · Drafter · Reviewer · 法律文书处理中</span>
+              <strong>等待生成文书</strong>
+              <span>填写需求后启动 Planner · Drafter · Reviewer</span>
             </div>
           </div>
 
@@ -475,6 +475,6 @@ Special notes:</textarea>
       </main>
     </div>
 
-    <script src="./app.js?v=20260606-docx-backend"></script>
+    <script src="./app.js?v=20260606-processing-state"></script>
   </body>
 </html>

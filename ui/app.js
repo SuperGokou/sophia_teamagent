@@ -162,6 +162,7 @@ const progressBar = document.querySelector("#progressBar");
 const conversationProgress = document.querySelector("#conversationProgress");
 const conversationProgressBar = document.querySelector("#conversationProgressBar");
 const conversationTokenLabel = document.querySelector("#conversationTokenLabel");
+const conversationTimeLabel = document.querySelector("#conversationTimeLabel");
 const agentWorkFeed = document.querySelector("#agentWorkFeed");
 const briefInput = document.querySelector("#briefInput");
 const sendToAgentButton = document.querySelector("#sendToAgentButton");
@@ -227,6 +228,7 @@ let generatedDocxBase64 = "";
 let generatedDocxName = "";
 let lastBridgeRequestSaved = false;
 let activeRunId = 0;
+let runState = "idle";
 let automationTasks = [];
 const conversationDeletedKey = "sophia.conversation.deleted";
 const tokenLedgerKey = "sophia.tokenLedger.v1";
@@ -1073,14 +1075,13 @@ function showProcessingConversationDetail() {
   updateConversationTitle(processingConversationTitle, processingConversationSubtitle);
   updateConversationDetail(processingConversationTitle, processingConversationDetail);
   runStatus.textContent = "处理中";
+  if (conversationTimeLabel) {
+    conversationTimeLabel.textContent = formatRunTimestamp();
+  }
 }
 
 function isConversationProcessing() {
-  return (
-    officeStage.classList.contains("is-running") ||
-    runStatus.textContent === "进行中" ||
-    runStatus.textContent === "处理中"
-  );
+  return runState === "running";
 }
 
 function parseBriefFields(brief) {
@@ -1833,19 +1834,54 @@ function renderAgents() {
   renderAgentWorkDetails();
 }
 
+function formatRunTimestamp(date = new Date()) {
+  return date.toLocaleString("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function updateRunCounters() {
+  totalCount.textContent = String(agents.length);
+  if (runState === "running") {
+    runningCount.textContent = "1";
+    doneCount.textContent = String(Math.max(0, activeIndex));
+    return;
+  }
+  if (runState === "completed") {
+    runningCount.textContent = "0";
+    doneCount.textContent = String(agents.length);
+    return;
+  }
+  if (runState === "failed") {
+    runningCount.textContent = "0";
+    doneCount.textContent = String(Math.max(0, activeIndex));
+    return;
+  }
+  runningCount.textContent = "0";
+  doneCount.textContent = "0";
+}
+
 function renderAgentWorkDetails() {
   if (!agentWorkFeed) {
     return;
   }
 
-  const allDone = runningCount.textContent === "0" && doneCount.textContent === "1";
-  const failed = runStatus.textContent === "生成失败";
+  updateRunCounters();
+  const allDone = runState === "completed";
+  const failed = runState === "failed";
+  const running = runState === "running";
+  const idle = runState === "idle";
+  const viewing = runState === "viewing";
   agentWorkFeed.innerHTML = agents
     .map((agent, index) => {
-      const isCurrent = !allDone && index === activeIndex;
+      const isCurrent = !allDone && !idle && index === activeIndex;
       const isDone = allDone || index < activeIndex;
-      const state = failed && isCurrent ? "需重试" : isDone ? "已完成" : isCurrent ? "处理中" : "等待";
-      const body = isCurrent ? agent.work : agent.detail;
+      const state = failed && isCurrent ? "需重试" : isDone ? "已完成" : running && isCurrent ? "处理中" : viewing && isCurrent ? "查看中" : idle ? "待开始" : "等待";
+      const body = running && isCurrent ? agent.work : agent.detail;
       const currentClass = isCurrent ? " is-current" : "";
       const doneClass = isDone ? " is-done" : "";
       return `
@@ -1904,13 +1940,12 @@ function setConversationDeleted(isDeleted) {
   conversationEntry.hidden = isDeleted;
   historyEntry.hidden = isDeleted;
   historyItem.hidden = false;
-  totalCount.textContent = isDeleted ? "0" : "1";
 
   if (isDeleted) {
-    runningCount.textContent = "0";
-    doneCount.textContent = "0";
+    runState = "idle";
     setConversationOpen(false);
   }
+  updateRunCounters();
 }
 
 function restoreConversation() {
@@ -1927,18 +1962,28 @@ function openConversation() {
   if (!wasProcessing) {
     window.clearInterval(runTimer);
     officeStage.classList.remove("is-running");
-    runStatus.textContent = "已打开";
-    updateConversationDetail("已打开文件包", "Reviewer · Word export · 100%");
-    activate("reviewer");
-    renderTimeline(timeline.length);
-    setProgress(100);
+    runState = generatedDraftSource === "backend" ? "completed" : "idle";
+    if (runState === "completed") {
+      runStatus.textContent = "已打开";
+      updateConversationDetail("已打开文件包", "Reviewer · Word export · 100%");
+      activate("reviewer");
+      renderTimeline(timeline.length);
+      setProgress(100);
+    } else {
+      runStatus.textContent = "待输入";
+      updateConversationTitle("等待生成文书", "填写需求后启动多 Agent");
+      updateConversationDetail("等待生成文书", "填写需求后启动 Planner · Drafter · Reviewer");
+      if (conversationTimeLabel) {
+        conversationTimeLabel.textContent = "未开始";
+      }
+      activate("planner");
+      setProgress(6);
+    }
   } else {
     showProcessingConversationDetail();
   }
 
-  doneCount.textContent = wasProcessing ? "0" : "1";
-  runningCount.textContent = wasProcessing ? "1" : "0";
-  totalCount.textContent = "1";
+  updateRunCounters();
   renderAgentWorkDetails();
   setConversationOpen(true);
 }
@@ -1952,8 +1997,13 @@ function deleteConversation(event) {
   currentRunTokens = 0;
   writeCurrentRunTokens(currentRunTokens);
   officeStage.classList.remove("is-running");
+  runState = "idle";
+  runStatus.textContent = "待输入";
+  if (conversationTimeLabel) {
+    conversationTimeLabel.textContent = "未开始";
+  }
   activate("planner");
-  setProgress(18);
+  setProgress(6);
   updateTokenDisplay();
 }
 
@@ -1961,8 +2011,8 @@ document.querySelectorAll(".agent-node").forEach((node) => {
   node.addEventListener("click", () => {
     window.clearInterval(runTimer);
     officeStage.classList.remove("is-running");
+    runState = "viewing";
     runStatus.textContent = "查看中";
-    runningCount.textContent = "0";
     activate(node.dataset.agent);
     setProgress(18 + activeIndex * 18);
   });
@@ -1984,12 +2034,14 @@ function prepareNewConversation() {
   currentRunTokens = 0;
   writeCurrentRunTokens(currentRunTokens);
   officeStage.classList.remove("is-running");
+  runState = "idle";
   runStatus.textContent = "待输入";
-  runningCount.textContent = "0";
-  doneCount.textContent = "0";
-  totalCount.textContent = "1";
+  if (conversationTimeLabel) {
+    conversationTimeLabel.textContent = "未开始";
+  }
   activate("planner");
   setProgress(6);
+  updateRunCounters();
   updateTokenDisplay();
   setGoogleDocStatus("warn", "请输入法律文书需求；如需写入 Google Doc，请先粘贴可编辑链接。");
   setBridgeStatus("warn", "有 Google Doc 链接时，多 Agent 生成会创建接管请求；真实写入需要 Chrome 插件或后端服务。");
@@ -2041,13 +2093,12 @@ async function startLegalDraftRun() {
   currentRunTokens = 0;
   writeCurrentRunTokens(currentRunTokens);
   updateTokenDisplay();
+  runState = "running";
   showProcessingConversationDetail();
   generateLegalButton.disabled = true;
   sendToAgentButton.disabled = true;
   officeStage.classList.add("is-running");
-  runningCount.textContent = "1";
-  doneCount.textContent = "0";
-  totalCount.textContent = "1";
+  updateRunCounters();
 
   let step = 0;
   let progress = 12;
@@ -2061,11 +2112,11 @@ async function startLegalDraftRun() {
       window.clearInterval(animationTimer);
       return;
     }
-    step = (step + 1) % agents.length;
+    step = Math.min(agents.length - 1, step + 1);
     progress = Math.min(88, progress + 10);
     activate(agents[step].id);
     setProgress(progress);
-  }, 900);
+  }, 2400);
   runTimer = animationTimer;
 
   try {
@@ -2075,10 +2126,11 @@ async function startLegalDraftRun() {
     }
     window.clearInterval(animationTimer);
     officeStage.classList.remove("is-running");
+    runState = "completed";
     runStatus.textContent = "已完成";
-    runningCount.textContent = "0";
-    doneCount.textContent = "1";
-    totalCount.textContent = "1";
+    if (conversationTimeLabel) {
+      conversationTimeLabel.textContent = formatRunTimestamp();
+    }
     activeIndex = agents.length - 1;
     renderAgents();
     renderTimeline(timeline.length);
@@ -2101,10 +2153,8 @@ async function startLegalDraftRun() {
     }
     window.clearInterval(animationTimer);
     officeStage.classList.remove("is-running");
+    runState = "failed";
     runStatus.textContent = "生成失败";
-    runningCount.textContent = "0";
-    doneCount.textContent = "0";
-    totalCount.textContent = "0";
     renderAgentWorkDetails();
     setProgress(0);
     generatedDraftText = "";
