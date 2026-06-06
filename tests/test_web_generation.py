@@ -84,6 +84,53 @@ class AlwaysTimeoutClient:
         raise TimeoutError("The read operation timed out")
 
 
+class SegmentedClient:
+    def __init__(self) -> None:
+        self.calls: list[list[dict[str, str]]] = []
+
+    def complete(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        role: str | None = None,
+    ) -> str:
+        self.calls.append(messages)
+        prompt = messages[1]["content"]
+        if "Generate exactly this segment: # PART B" in prompt:
+            return (
+                "# PART B — Optional / Recommended Document Checklist\n\n"
+                "## Acceptable Use Policy\nAI and SaaS misuse controls.\n\n"
+                "## Indemnification Agreement\nDirector and officer protection.\n\n"
+                "## AI Output Disclaimer\nCustomer-facing AI limitation language.\n"
+            )
+        if "Generate exactly this segment: # PART C" in prompt:
+            return (
+                "# PART C — Preparation Materials Needed For Each Document\n\n"
+                "Collect founder names, 10,000,000 authorized shares, 5,000,000 shares each, "
+                "4-year vesting, 1-year cliff, IP schedules, prior inventions, customer data flows, "
+                "and 83(b) election timing facts.\n"
+            )
+        if "Generate exactly this segment: # PART D" in prompt:
+            return (
+                "# PART D — Complete Templates For Required Documents\n\n"
+                "## Founder Stock Purchase Agreement\nComplete template with purchase price, vesting, "
+                "repurchase rights, ROFR, securities reps, signature blocks, and exhibits.\n\n"
+                "## Confidential Information and Invention Assignment Agreement\nComplete CIIAA template "
+                "with confidentiality, invention assignment, prior inventions schedule, and signature blocks.\n\n"
+                "## Intellectual Property Assignment Agreement\nComplete assignment language for software, "
+                "AI agents, workflows, prompts, models, data assets, and documentation.\n"
+            )
+        if "Generate exactly this segment: # PART A" in prompt:
+            return (
+                "# PART A — Required Document Checklist\n\n"
+                "## Corporate Bylaws\nPurpose, signer, timing, investor expectation, risk if missing.\n\n"
+                "## Initial Board Consent\nApproves officers, banking authorization, founder stock, IP assignment.\n\n"
+                "## Stock Ledger\nRequired ownership record.\n\n"
+                "## Cap Table\nInvestor diligence record.\n"
+            )
+        return "# Reviewer Quality Gate\n\nCounsel review required.\n"
+
+
 LONG_POST_FORMATION_PROMPT = (
     "You are a top-tier Silicon Valley startup attorney and Delaware corporate counsel. "
     "Generate a complete institutional-grade post-formation legal documentation package "
@@ -181,23 +228,43 @@ class WebGenerationTests(unittest.TestCase):
         self.assertIn("8 Del. C. § 141(f)", artifact_text)
         self.assertIn("version_date: 2026-06-06", artifact_text)
 
-    def test_long_prompt_is_compacted_before_provider_call(self) -> None:
-        client = CapturingClient()
+    def test_long_prompt_uses_segmented_generation_with_required_parts(self) -> None:
+        client = SegmentedClient()
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            generate_web_legal_package(
+            result = generate_web_legal_package(
                 client=client,
                 brief=LONG_POST_FORMATION_PROMPT,
                 output_path=root / "package.docx",
                 artifact_dir=root / "artifacts",
             )
+            artifact_text = (result.artifact_dir / "web_drafter_package.md").read_text(
+                encoding="utf-8"
+            )
 
-        prompt = client.messages[1]["content"]
-        self.assertLess(len(prompt), 5000)
-        self.assertIn("ONLINE-SAFE REQUEST DIGEST", prompt)
-        self.assertIn("Delaware C-Corporation", prompt)
-        self.assertIn("83(b) election instructions", prompt)
-        self.assertNotIn("Repeat complete professional template requirement", prompt)
+        self.assertEqual(result.generation_mode, "segmented")
+        self.assertEqual(len(client.calls), 4)
+        self.assertTrue(all(len(call[1]["content"]) < 5000 for call in client.calls))
+        self.assertTrue(
+            all(
+                "Repeat complete professional template requirement" not in call[1]["content"]
+                for call in client.calls
+            )
+        )
+        for heading in ["PART A", "PART B", "PART C", "PART D"]:
+            self.assertIn(heading, artifact_text)
+        for expected in [
+            "Corporate Bylaws",
+            "Stock Ledger",
+            "Cap Table",
+            "Founder Stock Purchase Agreement",
+            "Confidential Information and Invention Assignment Agreement",
+            "Acceptable Use Policy",
+            "AI Output Disclaimer",
+            "Indemnification Agreement",
+            "83(b) election",
+        ]:
+            self.assertIn(expected, artifact_text)
 
     def test_double_provider_timeout_returns_recovery_docx(self) -> None:
         client = AlwaysTimeoutClient()
@@ -217,11 +284,13 @@ class WebGenerationTests(unittest.TestCase):
             )
             self.assertTrue(result.output_path.exists())
 
-        self.assertEqual(len(client.calls), 2)
-        self.assertIn("AI Provider Timeout Recovery Package", artifact_text)
+        self.assertEqual(len(client.calls), 4)
+        self.assertIn("PART A", artifact_text)
+        self.assertIn("PART D", artifact_text)
+        self.assertIn("Segment Recovery", artifact_text)
         self.assertIn("Required Document Checklist", artifact_text)
         self.assertIn("END OF PACKAGE", artifact_text)
-        self.assertEqual(result.generation_mode, "timeout_recovery")
+        self.assertEqual(result.generation_mode, "segmented_recovery")
         self.assertNotIn("NVIDIA", artifact_text)
         self.assertNotIn("NVIDIA", doc_text)
 

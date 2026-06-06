@@ -25,6 +25,15 @@ class WebGenerationResult:
     generation_mode: str = "nvidia"
 
 
+@dataclass(frozen=True)
+class SegmentJob:
+    """A bounded online generation segment."""
+
+    heading: str
+    instructions: str
+    fallback_markdown: str
+
+
 def generate_web_legal_package(
     *,
     client: CompletionClient,
@@ -58,46 +67,60 @@ def generate_web_legal_package(
             )
         )
 
-    generation_mode = "nvidia"
-    print("starting web job: compact_package", flush=True)
-    try:
-        raw_draft = client.complete(
-            _compact_package_messages(online_brief, knowledge_context=knowledge_context),
-            role=DRAFTER_ROLE,
+    if _should_segment_legal_package(brief):
+        raw_draft, generation_mode, segment_observations = _generate_segmented_package(
+            client=client,
+            brief=online_brief,
+            knowledge_context=knowledge_context,
         )
-    except Exception as exc:
-        print(f"web compact package retry after provider error: {exc}", flush=True)
-        observations.append(
-            Observation(
-                status="warning",
-                summary="Provider timed out during full web package generation",
-                next_actions=["Retry with a shorter package prompt"],
-                artifacts=[],
-            )
-        )
+        observations.extend(segment_observations)
+    else:
+        generation_mode = "nvidia"
+        print("starting web job: compact_package", flush=True)
         try:
             raw_draft = client.complete(
-                _short_package_retry_messages(
+                _compact_package_messages(
                     online_brief,
                     knowledge_context=knowledge_context,
                 ),
                 role=DRAFTER_ROLE,
             )
-        except Exception as retry_exc:
-            print(f"web compact package recovery after retry error: {retry_exc}", flush=True)
+        except Exception as exc:
+            print(f"web compact package retry after provider error: {exc}", flush=True)
             observations.append(
                 Observation(
                     status="warning",
-                    summary="Provider timed out again; returned backend recovery package",
-                    next_actions=["Retry later for provider-generated full drafting"],
+                    summary="Provider timed out during full web package generation",
+                    next_actions=["Retry with a shorter package prompt"],
                     artifacts=[],
                 )
             )
-            raw_draft = _provider_timeout_recovery_package(
-                online_brief,
-                knowledge_context=knowledge_context,
-            )
-            generation_mode = "timeout_recovery"
+            try:
+                raw_draft = client.complete(
+                    _short_package_retry_messages(
+                        online_brief,
+                        knowledge_context=knowledge_context,
+                    ),
+                    role=DRAFTER_ROLE,
+                )
+            except Exception as retry_exc:
+                print(
+                    f"web compact package recovery after retry error: {retry_exc}",
+                    flush=True,
+                )
+                observations.append(
+                    Observation(
+                        status="warning",
+                        summary="Provider timed out again; returned backend recovery package",
+                        next_actions=["Retry later for provider-generated full drafting"],
+                        artifacts=[],
+                    )
+                )
+                raw_draft = _provider_timeout_recovery_package(
+                    online_brief,
+                    knowledge_context=knowledge_context,
+                )
+                generation_mode = "timeout_recovery"
 
     draft = _strip_provider_branding(
         _append_retrieved_authorities_appendix(
@@ -107,7 +130,7 @@ def generate_web_legal_package(
     )
     draft_path = artifact_dir / "web_drafter_package.md"
     draft_path.write_text(draft, encoding="utf-8")
-    print("finished web job: compact_package", flush=True)
+    print("finished web job: legal_package", flush=True)
     observations.append(
         Observation(
             status="success",
@@ -193,6 +216,210 @@ def _online_safe_brief(brief: str) -> str:
     return digest
 
 
+def _should_segment_legal_package(brief: str) -> bool:
+    text = brief.lower()
+    return (
+        len(brief) > LONG_BRIEF_THRESHOLD_CHARS
+        or "part a" in text
+        or "part d" in text
+        or "law-firm-grade" in text
+        or "complete templates" in text
+        or "institutional-grade" in text
+    )
+
+
+def _generate_segmented_package(
+    *,
+    client: CompletionClient,
+    brief: str,
+    knowledge_context: str | None,
+) -> tuple[str, str, list[Observation]]:
+    observations: list[Observation] = []
+    parts: list[str] = []
+    recovered = False
+    print("starting web job: segmented_package", flush=True)
+    for index, job in enumerate(_segment_jobs(), start=1):
+        print(f"starting web segment {index}: {job.heading}", flush=True)
+        try:
+            raw_part = client.complete(
+                _segment_package_messages(
+                    job,
+                    brief,
+                    knowledge_context=knowledge_context,
+                ),
+                role=DRAFTER_ROLE,
+            )
+            part = _normalize_segment_markdown(raw_part, heading=job.heading)
+            observations.append(
+                Observation(
+                    status="success",
+                    summary=f"Generated {job.heading}",
+                    next_actions=["Merge segment into final Word package"],
+                    artifacts=[],
+                )
+            )
+        except Exception as exc:
+            print(f"web segment recovery for {job.heading}: {exc}", flush=True)
+            recovered = True
+            part = job.fallback_markdown
+            observations.append(
+                Observation(
+                    status="warning",
+                    summary=f"Recovered {job.heading} after provider timeout",
+                    next_actions=["Regenerate this segment later for more depth"],
+                    artifacts=[],
+                )
+            )
+        parts.append(part)
+    print("finished web job: segmented_package", flush=True)
+    mode = "segmented_recovery" if recovered else "segmented"
+    return _compose_segmented_package(parts), mode, observations
+
+
+def _segment_jobs() -> list[SegmentJob]:
+    return [
+        SegmentJob(
+            heading="PART A — Required Document Checklist",
+            instructions=(
+                "Generate PART A only. Include required post-formation documents with: "
+                "document name, purpose, why it matters, who signs, execution timing, "
+                "investor expectation, risk if missing, preparation materials, and startup-stage priority. "
+                "Must cover Corporate Bylaws, Initial Board Consent, Founder Stock Purchase Agreement, "
+                "Stock Ledger, Cap Table, IP Assignment, Confidential Information and Invention Assignment "
+                "Agreement, 83(b) Election Instructions, Banking Authorization, Officer Appointment, "
+                "Founder Vesting, and Company Repurchase Rights."
+            ),
+            fallback_markdown=(
+                "# PART A — Required Document Checklist\n\n"
+                "## Segment Recovery — Required Document Checklist\n\n"
+                "- Corporate Bylaws: governance rules; approved by board/stockholders as applicable; high priority.\n"
+                "- Initial Board Consent: approves officers, banking, stock issuance, IP documents, records; high priority.\n"
+                "- Founder Stock Purchase Agreement: founder shares, consideration, vesting, restrictions; high priority.\n"
+                "- Stock Ledger and Cap Table: ownership records for diligence; high priority.\n"
+                "- IP Assignment and CIIAA: IP chain of title, confidentiality, invention assignment; high priority.\n"
+                "- 83(b) Election Instructions: tax deadline workflow; high priority.\n"
+                "- Banking Authorization and Officer Appointment: authority records; medium-high priority.\n"
+                "- Founder Vesting and Repurchase Rights Schedule: vesting mechanics; high priority.\n"
+            ),
+        ),
+        SegmentJob(
+            heading="PART B — Optional / Recommended Document Checklist",
+            instructions=(
+                "Generate PART B only. Include optional/recommended documents with the same fields as PART A. "
+                "Must include Founder Agreement, Advisor Agreement, Contractor Agreement, Employee Offer Letter, "
+                "Equity Incentive Plan, SAFE financing documents, Privacy Policy, Terms of Service, AI Services "
+                "Agreement, Customer MSA, Data Processing Addendum, Acceptable Use Policy, AI Output Disclaimer, "
+                "Security Policy, Board Observer Agreement, Indemnification Agreement, and Dispute Resolution Agreement."
+            ),
+            fallback_markdown=(
+                "# PART B — Optional / Recommended Document Checklist\n\n"
+                "## Segment Recovery — Optional / Recommended Documents\n\n"
+                "- Founder Agreement, Advisor Agreement, Contractor Agreement, Employee Offer Letter.\n"
+                "- Equity Incentive Plan, SAFE financing package, Board Observer Agreement, Indemnification Agreement.\n"
+                "- Privacy Policy, Terms of Service, AI Services Agreement, Customer MSA, Data Processing Addendum.\n"
+                "- Acceptable Use Policy, AI Output Disclaimer, Security Policy, Dispute Resolution Agreement.\n"
+            ),
+        ),
+        SegmentJob(
+            heading="PART C — Preparation Materials Needed For Each Document",
+            instructions=(
+                "Generate PART C only. Organize by document. Include all missing facts and materials needed before "
+                "drafting or signing: certificate, Delaware file number, registered agent, company address, founder "
+                "legal names, founder holding LLC details, addresses, 10,000,000 authorized shares, 5,000,000 shares "
+                "each if applicable, purchase price, par value, vesting schedule, officer roles, board composition, "
+                "bank signatories, IP disclosures, prior inventions, contractor/customer relationships, SaaS assumptions, "
+                "AI use cases, data privacy assumptions, cap table assumptions, and tax-election deadlines."
+            ),
+            fallback_markdown=(
+                "# PART C — Preparation Materials Needed For Each Document\n\n"
+                "## Segment Recovery — Preparation Materials\n\n"
+                "- Corporate records: certificate, Delaware file number, registered agent, address, par value, authorized shares.\n"
+                "- Founder records: names, addresses, holding LLC details, share allocations, purchase price, vesting schedule.\n"
+                "- Governance: board members, officer roles, bank signatories, approval dates, consent mechanics.\n"
+                "- IP/commercial: prior inventions, contractors, customer workflows, SaaS assumptions, AI agent use cases.\n"
+                "- Tax/securities: 83(b) transfer dates, filing deadlines, consideration, securities exemptions, counsel review.\n"
+            ),
+        ),
+        SegmentJob(
+            heading="PART D — Complete Templates For Required Documents",
+            instructions=(
+                "Generate PART D only. Provide production-quality first-pass templates, not just checklists. "
+                "For each required document, briefly state purpose, key legal risks, drafting notes, then provide clauses. "
+                "Must include: Corporate Bylaws; Initial Board Consent; Founder Stock Purchase Agreement; Stock Ledger; "
+                "Initial Capitalization Table; Intellectual Property Assignment Agreement; Confidential Information and "
+                "Invention Assignment Agreement; 83(b) Election Instructions and Cover Package; Banking Authorization; "
+                "Officer Appointment Resolutions; Founder Vesting and Company Repurchase Rights Schedule. Include signature "
+                "blocks, exhibits/schedules, bracketed placeholders, Delaware law references where appropriate, and AI/SaaS "
+                "clauses for output disclaimers, acceptable use, data handling, API restrictions, IP ownership, and liability limits."
+            ),
+            fallback_markdown=(
+                "# PART D — Complete Templates For Required Documents\n\n"
+                "## Segment Recovery — Core Template Package\n\n"
+                "## Corporate Bylaws\n[Template clauses: offices, stockholders, directors, officers, notices, quorum, records, amendments.]\n\n"
+                "## Initial Board Consent\nRESOLVED, that the Company approves officer appointments, banking authorization, founder stock issuance, stock ledger, cap table, IP assignment, CIIAA, and related post-formation records.\n\n"
+                "## Founder Stock Purchase Agreement\n[Founder] purchases [SHARES] shares at $[PRICE] per share, subject to vesting, company repurchase rights, ROFR, securities representations, tax notices, and signature blocks.\n\n"
+                "## Stock Ledger / Initial Capitalization Table\n[Fields: holder, shares, certificate/book-entry number, issue date, consideration, vesting, transfer restrictions.]\n\n"
+                "## Intellectual Property Assignment Agreement\nAssign software, AI agents, models, workflows, prompts, data assets, documentation, inventions, and improvements to the Company.\n\n"
+                "## Confidential Information and Invention Assignment Agreement\nConfidentiality, invention assignment, prior inventions schedule, return of materials, and signature blocks.\n\n"
+                "## 83(b) Election Instructions and Cover Package\nTransfer date, FMV, amount paid, filing deadline, IRS mailing, proof of filing, tax counsel review.\n\n"
+                "## Banking Authorization / Officer Appointment / Vesting and Repurchase Rights\nBoard-approved authority, signatories, titles, vesting schedule, cliff, monthly vesting, repurchase mechanics, exhibits.\n\n"
+                "## AI/SaaS Terms Addendum\nAI Output Disclaimer, Acceptable Use Policy, data handling, API restrictions, customer responsibility, IP ownership, limitation of liability, indemnification placeholders.\n"
+            ),
+        ),
+    ]
+
+
+def _segment_package_messages(
+    job: SegmentJob,
+    brief: str,
+    *,
+    knowledge_context: str | None,
+) -> list[dict[str, str]]:
+    supplemental = _supplemental_knowledge_prompt(knowledge_context, max_chars=1400)
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are a careful legal-document drafting assistant. Drafting support only; "
+                "do not provide final legal advice. Generate one bounded segment that is more "
+                "complete than a checklist while staying concise enough for an online request."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"Generate exactly this segment: # {job.heading}\n"
+                "Do not generate other PART sections. Do not wrap in a code fence. "
+                "Use professional legal-document Markdown with headings, clauses, placeholders, "
+                "signature/exhibit placeholders where relevant, and counsel-review caveats. "
+                "Target 900-1,500 words for this segment.\n\n"
+                f"{job.instructions}\n\n"
+                f"{supplemental}"
+                f"REQUEST DIGEST:\n{brief}"
+            ),
+        },
+    ]
+
+
+def _normalize_segment_markdown(markdown: str, *, heading: str) -> str:
+    text = _strip_markdown_fence(markdown).strip()
+    text = text.replace("END OF PACKAGE", "").strip()
+    if heading not in text:
+        text = f"# {heading}\n\n{text}"
+    return text
+
+
+def _compose_segmented_package(parts: list[str]) -> str:
+    return (
+        "\n\n".join(part.strip() for part in parts if part.strip()).strip()
+        + "\n\n# Reviewer Quality Gate\n\n"
+        "- Confirm every bracketed placeholder, signature block, exhibit, schedule, share count, date, and authority reference before use.\n"
+        "- Qualified counsel must review Delaware corporate approvals, securities compliance, tax-election timing, IP chain of title, AI/SaaS commercial terms, privacy/security obligations, and investor diligence readiness.\n"
+        "- Treat segment recovery sections as drafting scaffolds to regenerate in more depth before signature.\n\n"
+        "END OF PACKAGE"
+    )
+
+
 def _compact_package_messages(
     brief: str,
     *,
@@ -265,12 +492,19 @@ def _short_package_retry_messages(
     ]
 
 
-def _supplemental_knowledge_prompt(knowledge_context: str | None) -> str:
+def _supplemental_knowledge_prompt(
+    knowledge_context: str | None,
+    *,
+    max_chars: int = 2200,
+) -> str:
     if not knowledge_context:
         return ""
+    context = knowledge_context.strip()
+    if len(context) > max_chars:
+        context = context[:max_chars].rsplit("\n", 1)[0].rstrip()
     return (
         "SUPPLEMENTAL LEGAL KNOWLEDGE BASE CONTEXT:\n"
-        f"{knowledge_context}\n\n"
+        f"{context}\n\n"
         "Use this context only as retrieved authority support. Do not invent citations. "
         "If a cited issue is not supported by this context, mark it for counsel verification.\n\n"
     )
