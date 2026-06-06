@@ -223,6 +223,8 @@ let activeSkillFilter = "all";
 let currentRunTokens = 0;
 let generatedDraftText = "";
 let generatedDraftSource = "";
+let generatedDocxBase64 = "";
+let generatedDocxName = "";
 let lastBridgeRequestSaved = false;
 let activeRunId = 0;
 let automationTasks = [];
@@ -1364,12 +1366,14 @@ if (typeof window !== "undefined") {
 function completeDraftOutput(payload, docUrl = "") {
   generatedDraftText = String(payload?.draft || "").trim();
   generatedDraftSource = "backend";
+  generatedDocxBase64 = String(payload?.docx_base64 || "").trim();
+  generatedDocxName = String(payload?.docx_name || "").trim();
   draftOutput.hidden = false;
   draftOutputMeta.textContent = docUrl
     ? "Reviewer 已完成质量门。真实 NVIDIA 多 Agent 正文已生成，可写入 Google Doc 或下载 DOCX。"
     : "Reviewer 已完成质量门。真实 NVIDIA 多 Agent 正文已生成，可下载本地 DOCX。";
-  if (payload?.docx_name) {
-    setBridgeStatus("ok", `NVIDIA 多 Agent 已生成 Word：${payload.docx_name}`);
+  if (generatedDocxName) {
+    setBridgeStatus("ok", `NVIDIA 多 Agent 已生成 Word：${generatedDocxName}`);
   }
 }
 
@@ -1669,6 +1673,17 @@ function createLocalDocxBlob(brief) {
   });
 }
 
+function docxBase64ToBlob(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return new Blob([bytes], {
+    type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  });
+}
+
 function safeFileName(value) {
   const base = value
     .replace(/[^A-Za-z0-9\u4e00-\u9fa5_-]+/g, "-")
@@ -1692,8 +1707,14 @@ function downloadLocalDocx() {
     return;
   }
 
-  const fileName = `${safeFileName(summarizeGeneratedDraft() || summarizeBrief())}.docx`;
-  const blob = createLocalDocxBlob(generatedDraftText);
+  if (!generatedDocxBase64) {
+    setGoogleDocStatus("error", "后端没有返回真实 Word 文件。请重新点击“多 Agent 生成”。");
+    setBridgeStatus("error", "不会下载 Markdown fallback；必须使用后端生成的法律文书 DOCX。");
+    return;
+  }
+
+  const fileName = generatedDocxName || `${safeFileName(summarizeGeneratedDraft() || summarizeBrief())}.docx`;
+  const blob = docxBase64ToBlob(generatedDocxBase64);
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
   link.download = fileName;
@@ -1955,6 +1976,8 @@ function prepareNewConversation() {
   setConversationOpen(false);
   generatedDraftText = "";
   generatedDraftSource = "";
+  generatedDocxBase64 = "";
+  generatedDocxName = "";
   lastBridgeRequestSaved = false;
   clearChromeBridgeRequest();
   draftOutput.hidden = true;
@@ -1996,6 +2019,8 @@ async function startLegalDraftRun() {
   setConversationOpen(false);
   generatedDraftText = "";
   generatedDraftSource = "";
+  generatedDocxBase64 = "";
+  generatedDocxName = "";
   lastBridgeRequestSaved = false;
   clearChromeBridgeRequest();
   draftOutput.hidden = true;
@@ -2084,6 +2109,8 @@ async function startLegalDraftRun() {
     setProgress(0);
     generatedDraftText = "";
     generatedDraftSource = "";
+    generatedDocxBase64 = "";
+    generatedDocxName = "";
     clearChromeBridgeRequest();
     draftOutput.hidden = true;
     const message = generationRunFailureMessage(error);

@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
+import base64
 import tempfile
 import unittest
 
@@ -108,6 +109,10 @@ class LegalGenerationLocalServiceTests(unittest.TestCase):
 
             self.assertTrue(result["ok"])
             self.assertIn("docx_name", result)
+            self.assertEqual(
+                base64.b64decode(result["docx_base64"]),
+                b"docx placeholder",
+            )
             self.assertNotIn("docx_path", result)
             self.assertNotIn("artifact_dir", result)
             self.assertEqual(

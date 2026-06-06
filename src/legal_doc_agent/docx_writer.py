@@ -48,29 +48,30 @@ def write_docx(
 
 def _configure_document(document: Document) -> None:
     section = document.sections[0]
-    section.top_margin = Inches(0.75)
-    section.bottom_margin = Inches(0.75)
-    section.left_margin = Inches(0.85)
-    section.right_margin = Inches(0.85)
+    section.top_margin = Inches(1)
+    section.bottom_margin = Inches(1)
+    section.left_margin = Inches(1)
+    section.right_margin = Inches(1)
 
     styles = document.styles
     normal = styles["Normal"]
-    normal.font.name = "Arial"
-    normal.font.size = Pt(10.5)
+    normal.font.name = "Times New Roman"
+    normal.font.size = Pt(11)
     normal.paragraph_format.space_after = Pt(6)
-    normal.paragraph_format.line_spacing = 1.08
+    normal.paragraph_format.line_spacing = 2
 
     for style_name, size, color in [
-        ("Title", 22, RGBColor(31, 78, 121)),
-        ("Subtitle", 12, RGBColor(89, 89, 89)),
-        ("Heading 1", 15, RGBColor(31, 78, 121)),
-        ("Heading 2", 12.5, RGBColor(55, 96, 146)),
-        ("Heading 3", 11.5, RGBColor(64, 64, 64)),
+        ("Title", 18, RGBColor(0, 0, 0)),
+        ("Subtitle", 11, RGBColor(80, 80, 80)),
+        ("Heading 1", 13, RGBColor(0, 0, 0)),
+        ("Heading 2", 12, RGBColor(0, 0, 0)),
+        ("Heading 3", 11.5, RGBColor(0, 0, 0)),
     ]:
         style = styles[style_name]
-        style.font.name = "Arial"
+        style.font.name = "Times New Roman"
         style.font.size = Pt(size)
         style.font.color.rgb = color
+        style.font.bold = style_name != "Subtitle"
         style.paragraph_format.space_before = Pt(8)
         style.paragraph_format.space_after = Pt(4)
 
@@ -97,7 +98,7 @@ def _add_cover(document: Document, title: str, subtitle: str) -> None:
 def _add_markdown(document: Document, markdown: str) -> None:
     pending_table: list[list[str]] = []
 
-    for raw_line in markdown.splitlines():
+    for raw_line in _strip_markdown_fence(markdown).splitlines():
         line = raw_line.rstrip()
         if _is_table_line(line):
             pending_table.append(_split_table_row(line))
@@ -138,6 +139,18 @@ def _add_markdown(document: Document, markdown: str) -> None:
 
     if pending_table:
         _flush_table(document, pending_table)
+
+
+def _strip_markdown_fence(markdown: str) -> str:
+    text = markdown.strip()
+    if text.startswith("```"):
+        lines = text.splitlines()
+        if lines and lines[0].strip().startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        return "\n".join(lines).strip()
+    return markdown
 
 
 def _is_table_line(line: str) -> bool:

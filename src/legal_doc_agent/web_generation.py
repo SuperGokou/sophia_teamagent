@@ -32,7 +32,9 @@ def generate_web_legal_package(
     observations: list[Observation] = []
 
     print("starting web job: compact_package", flush=True)
-    draft = client.complete(_compact_package_messages(brief), role=DRAFTER_ROLE)
+    draft = _strip_markdown_fence(
+        client.complete(_compact_package_messages(brief), role=DRAFTER_ROLE)
+    )
     draft_path = artifact_dir / "web_drafter_package.md"
     draft_path.write_text(draft, encoding="utf-8")
     print("finished web job: compact_package", flush=True)
@@ -84,6 +86,7 @@ def _compact_package_messages(brief: str) -> list[dict[str, str]]:
             "role": "user",
             "content": (
                 "Generate one compact Markdown legal package for the request below. "
+                "Do not wrap the response in a Markdown code fence. "
                 "Use exactly these sections:\n"
                 "# Planner Summary\n"
                 "Matter type, missing facts, required documents, delivery order.\n"
@@ -96,3 +99,15 @@ def _compact_package_messages(brief: str) -> list[dict[str, str]]:
             ),
         },
     ]
+
+
+def _strip_markdown_fence(markdown: str) -> str:
+    text = markdown.strip()
+    if not text.startswith("```"):
+        return markdown.strip()
+    lines = text.splitlines()
+    if lines and lines[0].strip().startswith("```"):
+        lines = lines[1:]
+    if lines and lines[-1].strip() == "```":
+        lines = lines[:-1]
+    return "\n".join(lines).strip()

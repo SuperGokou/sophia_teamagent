@@ -34,6 +34,28 @@ class DocxWriterTests(unittest.TestCase):
             self.assertIn("Bullet", text)
             self.assertIn("Plain bold text.", text)
 
+    def test_write_docx_removes_markdown_code_fence(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_path = Path(temp_dir) / "sample.docx"
+
+            write_docx(
+                title="Package",
+                subtitle="Subtitle",
+                sections=[
+                    DocumentSection(
+                        title="PART A",
+                        markdown="```markdown\n# Planner Summary\n\n**Matter Type:** Founder package\n```",
+                    )
+                ],
+                output_path=output_path,
+            )
+
+            document = Document(output_path)
+            text = "\n".join(paragraph.text for paragraph in document.paragraphs)
+            self.assertIn("Planner Summary", text)
+            self.assertIn("Matter Type: Founder package", text)
+            self.assertNotIn("```", text)
+
 
 if __name__ == "__main__":
     unittest.main()

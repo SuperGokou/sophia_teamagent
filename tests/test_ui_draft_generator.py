@@ -90,6 +90,8 @@ class UiDraftGeneratorTests(unittest.TestCase):
         self.assertNotIn("startGoogleDocHandoffForRun();", start_run_block)
         self.assertIn("clearChromeBridgeRequest();", start_run_block)
         self.assertIn('generatedDraftSource = "backend"', source)
+        self.assertIn("generatedDocxBase64", source)
+        self.assertIn("docxBase64ToBlob", source)
         self.assertNotIn("Legacy", source)
 
         copy_start = source.rindex("async function copyGeneratedDraft")
@@ -102,4 +104,7 @@ class UiDraftGeneratorTests(unittest.TestCase):
         skills_start = source.index("function renderSkills", download_start)
         download_block = source[download_start:skills_start]
         self.assertIn('generatedDraftSource !== "backend"', download_block)
+        self.assertIn("!generatedDocxBase64", download_block)
+        self.assertIn("docxBase64ToBlob(generatedDocxBase64)", download_block)
+        self.assertNotIn("createLocalDocxBlob(generatedDraftText)", download_block)
         self.assertNotIn("completeDraftOutput();", download_block)

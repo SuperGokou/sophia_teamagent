@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 from dataclasses import asdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -81,6 +82,7 @@ class LegalGenerationLocalService:
             "ok": True,
             "draft": markdown,
             "docx_name": result.output_path.name,
+            "docx_base64": _read_docx_base64(result.output_path),
             "artifact_id": result.artifact_dir.name,
             "observations": [asdict(observation) for observation in result.observations],
             "message": "Generated with local NVIDIA multi-agent harness.",
@@ -203,3 +205,7 @@ def _read_artifact_markdown(artifact_dir: Path) -> str:
         if text:
             blocks.append(text)
     return "\n\n---\n\n".join(blocks)
+
+
+def _read_docx_base64(output_path: Path) -> str:
+    return base64.b64encode(output_path.read_bytes()).decode("ascii")
