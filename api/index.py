@@ -23,6 +23,7 @@ from legal_doc_agent.web_kb import build_web_knowledge_context, web_kb_path  # n
 
 
 MAX_REQUEST_BYTES = 1_000_000
+VERCEL_PROVIDER_TIMEOUT_SECONDS = 75
 
 
 class handler(BaseHTTPRequestHandler):
@@ -57,7 +58,9 @@ class handler(BaseHTTPRequestHandler):
             artifact_dir = output_root / "artifacts"
 
             client = NvidiaAgentRouter(
-                base_config=NvidiaConfig.from_env(timeout_seconds=120),
+                base_config=NvidiaConfig.from_env(
+                    timeout_seconds=VERCEL_PROVIDER_TIMEOUT_SECONDS
+                ),
                 profiles=load_web_agent_profiles_from_env(),
             )
             knowledge_context = build_web_knowledge_context(brief)
