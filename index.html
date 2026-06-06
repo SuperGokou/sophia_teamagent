@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sophia TeamAgent</title>
+    <link rel="icon" type="image/jpeg" href="./assets/site-logo.jpg" />
+    <link rel="stylesheet" href="./styles.css?v=20260601-agent-work-details" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="主导航">
+        <div class="brand">
+          <img class="brand-mark" src="./assets/brand-goku.png" alt="" aria-hidden="true" />
+          <div>
+            <strong>Sophia</strong>
+            <span>TeamAgent</span>
+          </div>
+        </div>
+
+        <label class="search">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m21 21-4.3-4.3m1.3-5.2a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0Z" />
+          </svg>
+          <input id="searchInput" type="search" placeholder="搜索" />
+        </label>
+
+        <nav class="nav-stack">
+          <button class="nav-item" type="button" id="runButton">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+            新建对话
+          </button>
+          <button class="nav-item" type="button" id="automationButton">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7v5l3.5 2M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z" /></svg>
+            自动任务
+          </button>
+          <button class="nav-item" type="button" id="skillMarketButton">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.7 6.3 3 3L8.8 18.2H5.8v-3.1l8.9-8.8ZM16 5l1.1-1.1a2.1 2.1 0 0 1 3 3L19 8" /></svg>
+            技能广场
+          </button>
+        </nav>
+
+        <section class="sidebar-section">
+          <span>本地知识库</span>
+          <button class="library-item" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4V4Zm9 0h7v7h-7V4ZM4 13h7v7H4v-7Zm9 0h7v7h-7v-7Z" /></svg>
+            应用
+          </button>
+          <button class="library-item" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v13H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm7 0v6h6" /></svg>
+            文档
+          </button>
+          <button class="library-item" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4V5Zm3 10 3.2-3.2 2.2 2.2 2.9-3.4L19 15M8 8.8h.1" /></svg>
+            图库
+          </button>
+          <button class="library-item" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H4V5Zm3 15h10M9 16v4m6-4v4" /></svg>
+            此电脑
+          </button>
+        </section>
+
+        <section class="sidebar-section conversations">
+          <span>对话</span>
+          <button class="conversation-pill is-active" type="button" id="officeButton">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 17.5A7.6 7.6 0 0 1 5 12a7 7 0 0 1 7-7 7.6 7.6 0 0 1 5.5 3M16 6.5A7.6 7.6 0 0 1 19 12a7 7 0 0 1-7 7 7.6 7.6 0 0 1-5.5-3" /></svg>
+            办公室
+          </button>
+          <div class="history-entry" id="historyEntry">
+            <button class="history-item" type="button" id="historyItem">
+              <strong>正在处理细节</strong>
+              <small>多 Agent 正在处理文书细节</small>
+            </button>
+            <button class="history-delete" type="button" id="historyDelete" aria-label="删除对话" title="删除对话">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 6h18M8 6V4h8v2m-9 0 1 15h8l1-15M10 10v7m4-7v7" />
+              </svg>
+            </button>
+          </div>
+        </section>
+
+        <div class="login-area">
+          <button class="login-button" type="button" id="loginButton" aria-expanded="false" aria-controls="loginPanel">
+            <span class="login-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3" /></svg>
+            </span>
+            <span>Login</span>
+          </button>
+          <form class="login-panel" id="loginPanel">
+            <label>
+              <span>Email</span>
+              <input type="email" placeholder="you@example.com" autocomplete="email" />
+            </label>
+            <button type="button">Continue</button>
+          </form>
+        </div>
+      </aside>
+
+      <main class="office">
+        <header class="office-title">
+          <h1>Eternal Presence AI</h1>
+        </header>
+
+        <section class="office-scene" id="officeStage" aria-label="Agent 办公室">
+          <div class="office-frame">
+            <img class="office-map" src="./assets/star-office/forest-office-reference.jpg" alt="" />
+
+            <svg class="route-layer" viewBox="0 0 100 100" aria-hidden="true">
+            <path class="route route-a" d="M22 48 C36 44 50 39 61 39" />
+            <path class="route route-b" d="M61 39 C69 34 75 28 83 27" />
+            <path class="route route-c" d="M61 39 C49 50 31 66 12 77" />
+            <circle class="pulse p1" r="0.55">
+              <animateMotion dur="4.2s" repeatCount="indefinite" path="M22 48 C36 44 50 39 61 39 C69 34 75 28 83 27" />
+            </circle>
+            <circle class="pulse p2" r="0.48">
+              <animateMotion dur="5.4s" begin="1s" repeatCount="indefinite" path="M61 39 C49 50 31 66 12 77" />
+            </circle>
+            </svg>
+
+            <button class="agent-node lead is-active" type="button" data-agent="planner" style="--x: 22%; --y: 48%">
+              <span class="agent-label">Planner</span>
+              <span class="agent-sprite sprite-standby"></span>
+              <span class="agent-glow"></span>
+            </button>
+
+            <button class="agent-node file" type="button" data-agent="file" style="--x: 12%; --y: 77%">
+              <span class="agent-label">File Agent</span>
+              <span class="agent-sprite sprite-standby"></span>
+              <span class="agent-glow"></span>
+            </button>
+
+            <button class="agent-node browser" type="button" data-agent="browser" style="--x: 61%; --y: 39%">
+              <span class="agent-label">Browser Agent</span>
+              <span class="agent-sprite sprite-standby"></span>
+              <span class="agent-glow"></span>
+            </button>
+
+            <button class="agent-node review" type="button" data-agent="reviewer" style="--x: 83%; --y: 27%">
+              <span class="agent-label">Reviewer</span>
+              <span class="agent-sprite sprite-standby"></span>
+              <span class="agent-glow"></span>
+            </button>
+            <div class="office-status-chip">[生成 Word] 工作中</div>
+            <div class="office-plaque" aria-hidden="true"><span>Eternal Presence AI</span></div>
+          </div>
+        </section>
+
+        <section class="draft-console" aria-label="法律文书生成控制台">
+          <div class="draft-field draft-brief">
+            <label for="briefInput">法律文书需求</label>
+            <textarea id="briefInput" spellcheck="false">Company legal name:
+Delaware file number:
+Founder 1:
+Founder 2:
+Ownership: 50/50
+Business: AI agents, staffing automation, SaaS workflow products
+Special notes:</textarea>
+            <div class="draft-submit-row">
+              <span>Ctrl + Enter 发送给 Agent</span>
+              <button class="send-agent-button" type="button" id="sendToAgentButton" title="发送给 Agent（Ctrl+Enter）" aria-label="发送给 Agent">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
+                <span>发送给 Agent</span>
+              </button>
+            </div>
+          </div>
+          <div class="delivery-panel">
+            <label class="draft-field">
+              <span>Google Doc 编辑链接</span>
+              <input id="googleDocInput" type="url" placeholder="https://docs.google.com/document/d/.../edit" />
+            </label>
+            <div class="draft-actions">
+              <button class="primary-action" type="button" id="generateLegalButton">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
+                多 Agent 生成
+              </button>
+              <button class="secondary-action" type="button" id="googleDocCheckButton">检查编辑权限</button>
+              <button class="secondary-action" type="button" id="openGoogleDocButton">打开链接</button>
+              <button class="secondary-action" type="button" id="chromeMonitorButton">Chrome 监控编辑</button>
+              <button class="secondary-action" type="button" id="downloadDocxButton">本地 DOCX</button>
+            </div>
+            <p class="bridge-status" id="bridgeStatus" aria-live="polite">
+              有 Google Doc 链接时，多 Agent 生成会创建接管请求；真实写入需要 Chrome 插件或后端服务。
+            </p>
+          </div>
+          <p class="doc-status" id="googleDocStatus" aria-live="polite">
+            可选：粘贴 Google Doc 链接。实际编辑前会校验 Editor 权限。
+          </p>
+          <div class="draft-output" id="draftOutput" hidden>
+            <div>
+              <strong>已生成法律文书草稿</strong>
+              <span id="draftOutputMeta">等待 Reviewer 审核完成</span>
+            </div>
+            <button class="secondary-action" type="button" id="copyDraftButton">复制正文</button>
+          </div>
+        </section>
+      </main>
+
+      <aside class="inspector" aria-label="对话明细">
+        <div class="window-tools" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 7h18s-3 0-3-7M10 21h4" /></svg>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+
+        <section class="metrics">
+          <article>
+            <span>今日消耗Token</span>
+            <strong><b id="tokenUsed">0</b><em>/10,000,000</em></strong>
+            <small id="tokenUsedNote">今日累计记录</small>
+          </article>
+          <article>
+            <span>今日节省Token</span>
+            <strong><b id="tokenSaved">0</b></strong>
+            <small id="tokenSavedNote">缓存与本地复用节省</small>
+          </article>
+        </section>
+
+        <section class="detail-panel">
+          <div class="count-strip">
+            <div>
+              <strong id="runningCount">1</strong>
+              <span>进行中</span>
+            </div>
+            <div>
+              <strong id="doneCount">0</strong>
+              <span>已完成</span>
+            </div>
+            <div>
+              <strong id="totalCount">1</strong>
+              <span>总计</span>
+            </div>
+          </div>
+
+          <div class="conversation-entry" id="conversationEntry">
+            <button class="conversation-row" type="button" id="conversationRow" aria-expanded="false" aria-controls="conversationOpenCard">
+              <div>
+                <strong>正在处理细节</strong>
+                <span id="conversationTokenLabel">累计Token消耗0</span>
+              </div>
+              <div>
+                <em id="runStatus">处理中</em>
+                <span>02:52 05/31</span>
+              </div>
+            </button>
+            <div class="conversation-progress" id="conversationProgress" role="progressbar" aria-label="处理进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="18">
+              <span id="conversationProgressBar"></span>
+            </div>
+            <button class="conversation-delete" type="button" id="conversationDelete" aria-label="删除对话" title="删除对话">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 6h18M8 6V4h8v2m-9 0 1 15h8l1-15M10 10v7m4-7v7" />
+              </svg>
+            </button>
+            <div class="conversation-open-card" id="conversationOpenCard" hidden>
+              <strong>正在处理细节</strong>
+              <span>Planner · Drafter · Reviewer · 法律文书处理中</span>
+            </div>
+          </div>
+
+          <div class="agent-work-feed" id="agentWorkFeed" aria-live="polite"></div>
+
+          <p class="end-text">工作细节会随 Agent 阶段更新</p>
+        </section>
+
+        <section class="agent-detail">
+          <div class="detail-head">
+            <span>Agent 队列</span>
+            <button type="button" id="exportButton">导出 Brief</button>
+          </div>
+          <div class="agent-list" id="agentList"></div>
+        </section>
+
+        <section class="progress-panel">
+          <div>
+            <span>文档进度</span>
+            <strong id="progressValue">18%</strong>
+          </div>
+          <div class="progress-track"><i id="progressBar"></i></div>
+          <ol class="timeline" id="timeline"></ol>
+        </section>
+
+      </aside>
+
+      <main class="automation-page" id="automationPage" hidden>
+        <header class="automation-header">
+          <h1>自动任务</h1>
+          <div class="window-tools" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 7h18s-3 0-3-7M10 21h4" /></svg>
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </header>
+
+        <section class="automation-empty" id="automationEmpty">
+          <div class="automation-empty-copy">
+            <h2>开启你的第一个自动任务吧</h2>
+            <p>Tips：请保持电脑开机并运行客户端，否则在关机、休眠或退出客户端时，自动任务无法执行</p>
+            <button class="automation-create" type="button" id="automationCreateButton">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+              新建自动任务
+            </button>
+          </div>
+        </section>
+
+        <section class="automation-active" id="automationActive" hidden>
+          <div class="automation-list-head">
+            <div>
+              <span>已启用自动任务</span>
+              <strong id="automationCountLabel">0 个任务</strong>
+            </div>
+            <p>任务会按设定时间调用多 Agent 流程；最终由 Reviewer 做质量门审核。</p>
+          </div>
+          <div class="automation-task-list" id="automationTaskList"></div>
+          <button class="automation-create" type="button" id="automationCreateAnother">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+            新建自动任务
+          </button>
+        </section>
+
+        <section class="automation-composer" id="automationComposer" hidden>
+          <form class="automation-composer-card" id="automationForm" aria-labelledby="automationComposerTitle">
+            <header>
+              <div>
+                <span>Automation</span>
+                <h2 id="automationComposerTitle">新建自动任务</h2>
+              </div>
+              <button class="icon-button" type="button" id="automationComposerClose" aria-label="关闭">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              </button>
+            </header>
+
+            <div class="automation-form-grid">
+              <label>
+                <span>任务名称</span>
+                <input id="automationTaskTitle" name="title" type="text" maxlength="48" required placeholder="例如：公司资料定时复核" />
+              </label>
+
+              <label>
+                <span>工作流</span>
+                <select id="automationWorkflow" name="workflow">
+                  <option value="legal-review">法律文书复核</option>
+                  <option value="google-doc-layout">Google Doc 法律版式整理</option>
+                  <option value="rag-refresh">法律知识库增量更新</option>
+                  <option value="word-export">Word 导出质量检查</option>
+                </select>
+              </label>
+
+              <label>
+                <span>频率</span>
+                <select id="automationFrequency" name="frequency">
+                  <option value="daily">每天</option>
+                  <option value="weekly">每周一</option>
+                  <option value="workday">工作日</option>
+                  <option value="manual">仅手动</option>
+                </select>
+              </label>
+
+              <label>
+                <span>执行时间</span>
+                <input id="automationTime" name="time" type="time" value="09:00" />
+              </label>
+
+              <label class="is-wide">
+                <span>执行内容</span>
+                <textarea id="automationInstruction" name="instruction" rows="4" maxlength="420" required placeholder="描述这个自动任务要检查、生成或更新什么。"></textarea>
+              </label>
+
+              <label class="is-wide">
+                <span>Google Doc 编辑链接（可选）</span>
+                <input id="automationDocLink" name="docUrl" type="url" placeholder="https://docs.google.com/document/d/.../edit" />
+              </label>
+            </div>
+
+            <div class="automation-agent-route" aria-label="Agent 路由">
+              <span>Planner</span>
+              <i></i>
+              <span>Retriever</span>
+              <i></i>
+              <span>Drafter</span>
+              <i></i>
+              <span>Reviewer</span>
+            </div>
+
+            <label class="automation-switch">
+              <input id="automationRequireReview" name="requireReview" type="checkbox" checked />
+              <span>
+                <strong>启用最终审核</strong>
+                <small>Reviewer 会检查完整性、引用依据、格式和 Google Doc 权限提示。</small>
+              </span>
+            </label>
+
+            <footer>
+              <p id="automationFormStatus" role="status"></p>
+              <div>
+                <button class="secondary-button" type="button" id="automationCancel">取消</button>
+                <button class="automation-create" type="submit">启用自动任务</button>
+              </div>
+            </footer>
+          </form>
+        </section>
+      </main>
+
+      <main class="skills-page" id="skillsPage" hidden>
+        <section class="skills-view is-active" id="skillLibraryView" aria-label="Skill库">
+          <header class="skills-header">
+            <div class="skill-title-row">
+              <button class="skill-section-tab" type="button">探索发现</button>
+              <button class="skill-section-tab is-active" type="button">Skill库</button>
+            </div>
+            <div class="skill-tools">
+              <button class="round-tool" type="button" aria-label="搜索技能">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.3-4.3m1.3-5.2a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0Z" /></svg>
+              </button>
+              <button class="skill-sort" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h12M4 12h9M4 17h6m9-9-3 3-3-3" /></svg>
+                最热
+              </button>
+              <button class="skill-action" type="button" id="mySkillsButton">我的技能</button>
+            </div>
+          </header>
+
+          <div class="skill-filter-row" aria-label="技能分类">
+            <button class="skill-chip is-active" type="button" data-skill-filter="all">全部</button>
+            <button class="skill-chip" type="button" data-skill-filter="office">💼 办公学习</button>
+            <button class="skill-chip" type="button" data-skill-filter="system">🖥️ 电脑设置</button>
+            <button class="skill-chip" type="button" data-skill-filter="daily">🌱 生活日常</button>
+            <button class="skill-chip" type="button" data-skill-filter="creative">🎮 休闲娱乐</button>
+            <button class="skill-chip" type="button" data-skill-filter="pro">💠 专业专区</button>
+          </div>
+
+          <label class="skill-search" aria-label="搜索 Skill">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.3-4.3m1.3-5.2a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0Z" /></svg>
+            <input id="skillSearchInput" type="search" placeholder="搜索 Skill、Agent、文档能力" />
+          </label>
+
+          <div class="skill-grid" id="skillGrid"></div>
+        </section>
+
+        <section class="skills-view my-skills-view" id="mySkillsView" aria-label="我的技能" hidden>
+          <header class="skills-header">
+            <div class="my-skill-title">
+              <button class="back-button" type="button" id="skillBackButton" aria-label="返回 Skill 库">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6" /></svg>
+              </button>
+              <h1>我的技能</h1>
+            </div>
+            <div class="skill-tools">
+              <button class="round-tool" type="button" aria-label="搜索我的技能">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.3-4.3m1.3-5.2a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0Z" /></svg>
+              </button>
+              <button class="skill-action" type="button" id="importSkillButton">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+                导入技能
+              </button>
+            </div>
+          </header>
+
+          <div class="skill-filter-row" aria-label="我的技能分类">
+            <button class="skill-chip is-active" type="button">🔷 全部</button>
+            <button class="skill-chip" type="button">🔧 技能市场</button>
+            <button class="skill-chip" type="button">📥 手动导入</button>
+          </div>
+
+          <div class="my-skills-empty" id="mySkillsEmpty">
+            <div class="empty-glyph" aria-hidden="true">
+              <svg viewBox="0 0 64 64">
+                <path d="M20 24h24l6 9-18 16-18-16 6-9Z" />
+                <path d="M24 24l8 25 8-25M14 33h36" />
+              </svg>
+            </div>
+            <p>暂无已添加的技能</p>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js?v=20260601-agent-work-details"></script>
+  </body>
+</html>
