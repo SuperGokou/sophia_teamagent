@@ -127,8 +127,29 @@ class UiDraftGeneratorTests(unittest.TestCase):
         self.assertIn('return runState === "running";', source)
         self.assertIn("totalCount.textContent = String(agents.length)", source)
         self.assertIn("doneCount.textContent = String(agents.length)", source)
-        self.assertIn("step = Math.min(agents.length - 1, step + 1)", source)
+        self.assertIn("step = Math.min(livePhases.length - 1, step + 1)", source)
         self.assertNotIn("step = (step + 1) % agents.length", source)
+
+    def test_processing_panel_shows_live_agent_activity(self) -> None:
+        source = (ROOT / "ui" / "app.js").read_text(encoding="utf-8")
+        html = (ROOT / "ui" / "index.html").read_text(encoding="utf-8")
+
+        self.assertIn('id="agentLiveStatus"', html)
+        self.assertIn('id="agentLiveList"', html)
+        self.assertIn('id="agentEventLog"', html)
+        self.assertIn("Agent 实时动态", html)
+        self.assertIn("显示每个 Agent 的当前动作、耗时和后端回传事件", html)
+
+        self.assertIn("let agentRuntimeState = createInitialAgentRuntime();", source)
+        self.assertIn("function resetAgentRuntime", source)
+        self.assertIn("function updateAgentRuntime", source)
+        self.assertIn("function appendAgentEvent", source)
+        self.assertIn("function syncAgentRuntimeFromPayload", source)
+        self.assertIn("renderAgentLiveStatus();", source)
+        self.assertIn("payload?.observations", source)
+        self.assertIn('updateAgentRuntime("browser"', source)
+        self.assertIn('updateAgentRuntime("file"', source)
+        self.assertIn('updateAgentRuntime("reviewer"', source)
 
     def test_brief_textarea_starts_empty(self) -> None:
         html = (ROOT / "ui" / "index.html").read_text(encoding="utf-8")

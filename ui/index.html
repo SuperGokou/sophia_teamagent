@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Sophia TeamAgent</title>
     <link rel="icon" type="image/jpeg" href="./assets/site-logo.jpg" />
-    <link rel="stylesheet" href="./styles.css?v=20260601-agent-work-details" />
+    <link rel="stylesheet" href="./styles.css?v=20260606-live-agent-status" />
   </head>
   <body>
     <div class="app-shell">
@@ -251,9 +251,21 @@
             </div>
           </div>
 
+          <section class="agent-live-status" id="agentLiveStatus" aria-label="Agent 实时动态">
+            <header>
+              <div>
+                <strong>Agent 实时动态</strong>
+                <span>显示每个 Agent 的当前动作、耗时和后端回传事件</span>
+              </div>
+              <em id="agentLiveSummary">待开始</em>
+            </header>
+            <div class="agent-live-list" id="agentLiveList"></div>
+            <div class="agent-event-log" id="agentEventLog" aria-live="polite"></div>
+          </section>
+
           <div class="agent-work-feed" id="agentWorkFeed" aria-live="polite"></div>
 
-          <p class="end-text">工作细节会随 Agent 阶段更新</p>
+          <p class="end-text">实时动态会在生成中持续更新</p>
         </section>
 
         <section class="agent-detail">
@@ -469,6 +481,6 @@
       </main>
     </div>
 
-    <script src="./app.js?v=20260606-google-doc-handoff"></script>
+    <script src="./app.js?v=20260606-live-agent-status"></script>
   </body>
 </html>

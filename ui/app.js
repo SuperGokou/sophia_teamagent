@@ -163,6 +163,10 @@ const conversationProgress = document.querySelector("#conversationProgress");
 const conversationProgressBar = document.querySelector("#conversationProgressBar");
 const conversationTokenLabel = document.querySelector("#conversationTokenLabel");
 const conversationTimeLabel = document.querySelector("#conversationTimeLabel");
+const agentLiveStatus = document.querySelector("#agentLiveStatus");
+const agentLiveSummary = document.querySelector("#agentLiveSummary");
+const agentLiveList = document.querySelector("#agentLiveList");
+const agentEventLog = document.querySelector("#agentEventLog");
 const agentWorkFeed = document.querySelector("#agentWorkFeed");
 const briefInput = document.querySelector("#briefInput");
 const sendToAgentButton = document.querySelector("#sendToAgentButton");
@@ -229,6 +233,8 @@ let generatedDocxName = "";
 let lastBridgeRequestSaved = false;
 let activeRunId = 0;
 let runState = "idle";
+let agentRuntimeState = createInitialAgentRuntime();
+let agentEvents = [];
 let automationTasks = [];
 const conversationDeletedKey = "sophia.conversation.deleted";
 const tokenLedgerKey = "sophia.tokenLedger.v1";
@@ -398,6 +404,177 @@ function escapeHtml(value) {
       "'": "&#39;",
     }[char]
   ));
+}
+
+function createInitialAgentRuntime() {
+  return agents.map((agent) => ({
+    id: agent.id,
+    name: agent.name,
+    role: agent.role,
+    step: agent.step,
+    model: agent.model,
+    status: "idle",
+    activity: "待开始",
+    detail: agent.detail,
+    startedAt: null,
+    finishedAt: null,
+    updatedAt: null,
+  }));
+}
+
+function resetAgentRuntime() {
+  agentRuntimeState = createInitialAgentRuntime();
+  agentEvents = [];
+  renderAgentLiveStatus();
+  updateRunCounters();
+}
+
+function formatAgentElapsed(agent) {
+  if (!agent.startedAt) {
+    return "--";
+  }
+  const end = agent.finishedAt || Date.now();
+  const seconds = Math.max(0, Math.round((end - agent.startedAt) / 1000));
+  if (seconds < 60) {
+    return `${seconds}s`;
+  }
+  return `${Math.floor(seconds / 60)}m ${String(seconds % 60).padStart(2, "0")}s`;
+}
+
+function agentStatusLabel(status) {
+  return {
+    idle: "等待",
+    queued: "排队",
+    running: "处理中",
+    done: "已完成",
+    failed: "失败",
+    warning: "需复核",
+  }[status] || "等待";
+}
+
+function updateAgentRuntime(agentId, status, activity, extra = {}) {
+  const now = Date.now();
+  agentRuntimeState = agentRuntimeState.map((agent) => {
+    if (agent.id !== agentId) {
+      return agent;
+    }
+    const startedAt = agent.startedAt || (status === "running" ? now : null);
+    const finishedAt = ["done", "failed", "warning"].includes(status) ? now : null;
+    return {
+      ...agent,
+      ...extra,
+      status,
+      activity: activity || agent.activity,
+      startedAt,
+      finishedAt,
+      updatedAt: now,
+    };
+  });
+  renderAgentLiveStatus();
+  updateRunCounters();
+}
+
+function appendAgentEvent(agentId, message, kind = "info") {
+  const agent = agents.find((item) => item.id === agentId) || agents[0];
+  agentEvents = [
+    {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      agentId: agent.id,
+      agentName: agent.name,
+      kind,
+      message: String(message || "").trim(),
+      at: new Date(),
+    },
+    ...agentEvents,
+  ].filter((event) => event.message).slice(0, 12);
+  renderAgentLiveStatus();
+}
+
+function agentIdForObservation(message) {
+  const value = String(message || "").toLowerCase();
+  if (/(rag|sqlite|fts5|citation|authority|retriev|knowledge|context|version)/.test(value)) {
+    return "browser";
+  }
+  if (/(docx|word|draft|part |template|package|generated|assemble|file)/.test(value)) {
+    return "file";
+  }
+  if (/(review|quality|gate|final|risk)/.test(value)) {
+    return "reviewer";
+  }
+  return "planner";
+}
+
+function syncAgentRuntimeFromPayload(payload) {
+  updateAgentRuntime("planner", "done", "需求结构和交付顺序已确认");
+  updateAgentRuntime("browser", "done", "RAG / SQLite FTS5 引用依据已核验");
+  updateAgentRuntime("file",
+    payload?.generation_mode === "timeout_recovery" ? "warning" : "done",
+    payload?.generation_mode === "segmented" || payload?.generation_mode === "segmented_recovery"
+      ? "PART A-D 分段文书包已完成"
+      : "Word 文书包已生成",
+  );
+  updateAgentRuntime("reviewer",
+    payload?.generation_mode === "timeout_recovery" ? "warning" : "done",
+    payload?.generation_mode === "timeout_recovery"
+      ? "已完成恢复包检查，建议稍后重试完整生成"
+      : "质量门已完成，可下载 Word",
+  );
+
+  const observations = Array.isArray(payload?.observations) ? payload.observations : [];
+  observations.forEach((observation) => {
+    appendAgentEvent(agentIdForObservation(observation), observation, "backend");
+  });
+  if (!observations.length) {
+    appendAgentEvent("reviewer", "后端已返回生成结果，未附加详细事件。", "backend");
+  }
+}
+
+function renderAgentLiveStatus() {
+  if (!agentLiveList || !agentEventLog) {
+    return;
+  }
+
+  const running = agentRuntimeState.filter((agent) => agent.status === "running").length;
+  const done = agentRuntimeState.filter((agent) => agent.status === "done" || agent.status === "warning").length;
+  const failed = agentRuntimeState.filter((agent) => agent.status === "failed").length;
+  if (agentLiveSummary) {
+    agentLiveSummary.textContent = failed
+      ? "需要处理"
+      : running
+        ? `${running} 个处理中`
+        : done === agents.length
+          ? "全部完成"
+          : "待开始";
+  }
+
+  agentLiveList.innerHTML = agentRuntimeState
+    .map((agent) => `
+      <article class="agent-live-card is-${escapeHtml(agent.status)}">
+        <i aria-hidden="true"></i>
+        <div>
+          <header>
+            <strong>${escapeHtml(agent.name)}</strong>
+            <em>${escapeHtml(agentStatusLabel(agent.status))}</em>
+          </header>
+          <span>${escapeHtml(agent.role)} · ${escapeHtml(agent.step)}</span>
+          <p>${escapeHtml(agent.activity)}</p>
+          <small>${escapeHtml(agent.model)} · ${escapeHtml(formatAgentElapsed(agent))}</small>
+        </div>
+      </article>
+    `)
+    .join("");
+
+  agentEventLog.innerHTML = agentEvents.length
+    ? agentEvents
+        .map((event) => `
+          <article class="agent-event is-${escapeHtml(event.kind)}">
+            <span>${escapeHtml(event.at.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }))}</span>
+            <strong>${escapeHtml(event.agentName)}</strong>
+            <p>${escapeHtml(event.message)}</p>
+          </article>
+        `)
+        .join("")
+    : '<p class="agent-event-empty">点击“多 Agent 生成”后显示实时事件。</p>';
 }
 
 function createAutomationId() {
@@ -1855,8 +2032,10 @@ function formatRunTimestamp(date = new Date()) {
 function updateRunCounters() {
   totalCount.textContent = String(agents.length);
   if (runState === "running") {
-    runningCount.textContent = "1";
-    doneCount.textContent = String(Math.max(0, activeIndex));
+    const runningAgents = agentRuntimeState.filter((agent) => agent.status === "running").length;
+    const doneAgents = agentRuntimeState.filter((agent) => agent.status === "done" || agent.status === "warning").length;
+    runningCount.textContent = String(Math.max(1, runningAgents));
+    doneCount.textContent = String(doneAgents);
     return;
   }
   if (runState === "completed") {
@@ -2010,6 +2189,7 @@ function deleteConversation(event) {
   if (conversationTimeLabel) {
     conversationTimeLabel.textContent = "未开始";
   }
+  resetAgentRuntime();
   activate("planner");
   setProgress(6);
   updateTokenDisplay();
@@ -2047,6 +2227,7 @@ function prepareNewConversation() {
   if (conversationTimeLabel) {
     conversationTimeLabel.textContent = "未开始";
   }
+  resetAgentRuntime();
   activate("planner");
   setProgress(6);
   updateRunCounters();
@@ -2102,6 +2283,7 @@ async function startLegalDraftRun() {
   writeCurrentRunTokens(currentRunTokens);
   updateTokenDisplay();
   runState = "running";
+  resetAgentRuntime();
   showProcessingConversationDetail();
   generateLegalButton.disabled = true;
   sendToAgentButton.disabled = true;
@@ -2110,7 +2292,35 @@ async function startLegalDraftRun() {
 
   let step = 0;
   let progress = 12;
+  const livePhases = [
+    {
+      agentId: "planner",
+      activity: "解析需求、识别文书类型、列出缺失字段",
+      progress: 24,
+      event: "Planner 开始拆解法律文书需求。",
+    },
+    {
+      agentId: "browser",
+      activity: "查询本地 RAG、SQLite FTS5、引用依据和版本日期",
+      progress: 44,
+      event: "Browser Agent 正在核验知识库和引用上下文。",
+    },
+    {
+      agentId: "file",
+      activity: "生成法律文书正文、附件、签署页和 Word 包",
+      progress: 70,
+      event: "File Agent 正在装配法律文书包。",
+    },
+    {
+      agentId: "reviewer",
+      activity: "等待草稿进入质量门，检查完整性和格式",
+      progress: 84,
+      event: "Reviewer 准备进行最终质量门。",
+    },
+  ];
   activate(agents[0].id);
+  updateAgentRuntime("planner", "running", livePhases[0].activity);
+  appendAgentEvent("planner", livePhases[0].event);
   setProgress(progress);
   setGoogleDocStatus("warn", "正在连接本机 AI 多 Agent 生成服务...");
   setBridgeStatus("warn", "需要 python -m legal_doc_agent serve --port 9766 正在运行；不会使用浏览器 fallback。");
@@ -2120,9 +2330,23 @@ async function startLegalDraftRun() {
       window.clearInterval(animationTimer);
       return;
     }
-    step = Math.min(agents.length - 1, step + 1);
-    progress = Math.min(88, progress + 10);
-    activate(agents[step].id);
+    if (step >= livePhases.length - 1) {
+      const currentPhase = livePhases[step];
+      progress = Math.min(88, progress + 2);
+      updateAgentRuntime(currentPhase.agentId, "running", "仍在等待后端生成结果，完成后会立即回填事件");
+      setProgress(progress);
+      return;
+    }
+    const previousPhase = livePhases[step];
+    if (previousPhase) {
+      updateAgentRuntime(previousPhase.agentId, "done", "该阶段已提交给下一位 Agent");
+    }
+    step = Math.min(livePhases.length - 1, step + 1);
+    const currentPhase = livePhases[step];
+    progress = Math.min(88, Math.max(progress + 8, currentPhase.progress));
+    activate(currentPhase.agentId);
+    updateAgentRuntime(currentPhase.agentId, "running", currentPhase.activity);
+    appendAgentEvent(currentPhase.agentId, currentPhase.event);
     setProgress(progress);
   }, 2400);
   runTimer = animationTimer;
@@ -2140,6 +2364,7 @@ async function startLegalDraftRun() {
       conversationTimeLabel.textContent = formatRunTimestamp();
     }
     activeIndex = agents.length - 1;
+    syncAgentRuntimeFromPayload(payload);
     renderAgents();
     renderTimeline(timeline.length);
     setProgress(100);
@@ -2168,6 +2393,9 @@ async function startLegalDraftRun() {
     officeStage.classList.remove("is-running");
     runState = "failed";
     runStatus.textContent = "生成失败";
+    const failedAgent = activeAgent();
+    updateAgentRuntime(failedAgent.id, "failed", generationRunFailureMessage(error));
+    appendAgentEvent(failedAgent.id, generationRunFailureMessage(error), "error");
     renderAgentWorkDetails();
     setProgress(0);
     generatedDraftText = "";
@@ -2288,6 +2516,7 @@ document.addEventListener("keydown", (event) => {
 });
 
 activate("planner");
+renderAgentLiveStatus();
 setProgress(18);
 currentRunTokens = readCurrentRunTokens();
 automationTasks = readAutomationTasks();
