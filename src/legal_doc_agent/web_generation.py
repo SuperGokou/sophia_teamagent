@@ -33,11 +33,24 @@ def generate_web_legal_package(
     observations: list[Observation] = []
 
     print("starting web job: compact_package", flush=True)
-    draft = _ensure_complete_web_package(
-        _strip_markdown_fence(
-            client.complete(_compact_package_messages(brief), role=DRAFTER_ROLE)
+    try:
+        raw_draft = client.complete(_compact_package_messages(brief), role=DRAFTER_ROLE)
+    except Exception as exc:
+        print(f"web compact package retry after provider error: {exc}", flush=True)
+        observations.append(
+            Observation(
+                status="warning",
+                summary="Provider timed out during full web package generation",
+                next_actions=["Retry with a shorter package prompt"],
+                artifacts=[],
+            )
         )
-    )
+        raw_draft = client.complete(
+            _short_package_retry_messages(brief),
+            role=DRAFTER_ROLE,
+        )
+
+    draft = _ensure_complete_web_package(_strip_markdown_fence(raw_draft))
     draft_path = artifact_dir / "web_drafter_package.md"
     draft_path.write_text(draft, encoding="utf-8")
     print("finished web job: compact_package", flush=True)
@@ -99,6 +112,36 @@ def _compact_package_messages(brief: str) -> list[dict[str, str]]:
                 "# Reviewer Quality Gate\n"
                 "Blocking issues, required fixes, formatting checks, and counsel review notes.\n"
                 "Target 1,600-2,400 words. Finish with the exact line: END OF PACKAGE.\n\n"
+                f"REQUEST:\n{brief}"
+            ),
+        },
+    ]
+
+
+def _short_package_retry_messages(brief: str) -> list[dict[str, str]]:
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are a concise legal-document drafting assistant. Drafting "
+                "support only; do not provide final legal advice. Prioritize "
+                "returning a complete Word-ready package quickly."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "The previous provider request timed out. Generate a shorter, complete "
+                "Markdown legal package for the request below. Do not wrap the response "
+                "in a Markdown code fence. Use exactly these sections:\n"
+                "# Planner Summary\n"
+                "Matter type, missing facts, required documents, delivery order.\n"
+                "# Draft Package\n"
+                "Practical clauses/templates/checklists with bracketed placeholders. "
+                "Use concise clauses and close every section.\n"
+                "# Reviewer Quality Gate\n"
+                "Blocking issues, required fixes, formatting checks, and counsel review notes.\n"
+                "Target 700-1,100 words. Finish with the exact line: END OF PACKAGE.\n\n"
                 f"REQUEST:\n{brief}"
             ),
         },
