@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import textwrap
@@ -126,6 +127,15 @@ class UiDraftGeneratorTests(unittest.TestCase):
         self.assertIn("doneCount.textContent = String(agents.length)", source)
         self.assertIn("step = Math.min(agents.length - 1, step + 1)", source)
         self.assertNotIn("step = (step + 1) % agents.length", source)
+
+    def test_brief_textarea_starts_empty(self) -> None:
+        html = (ROOT / "ui" / "index.html").read_text(encoding="utf-8")
+        match = re.search(r'<textarea id="briefInput"[^>]*>(.*?)</textarea>', html, re.S)
+
+        self.assertIsNotNone(match)
+        assert match is not None
+        self.assertEqual(match.group(1).strip(), "")
+        self.assertNotIn("Company legal name:", match.group(1))
 
     def test_google_doc_handoff_copy_does_not_require_chrome_extension(self) -> None:
         source = (ROOT / "ui" / "app.js").read_text(encoding="utf-8")
