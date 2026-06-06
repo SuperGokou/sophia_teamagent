@@ -48,6 +48,28 @@ class TimeoutThenSuccessClient:
         )
 
 
+class CapturingClient:
+    def __init__(self) -> None:
+        self.messages: list[dict[str, str]] = []
+
+    def complete(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        role: str | None = None,
+    ) -> str:
+        self.messages = messages
+        return (
+            "# Planner Summary\n\n"
+            "Matter type: Delaware founder package.\n\n"
+            "# Draft Package\n\n"
+            "Use counsel-reviewed placeholders.\n\n"
+            "# Reviewer Quality Gate\n\n"
+            "Check retrieved citations and version dates.\n\n"
+            "END OF PACKAGE"
+        )
+
+
 class WebGenerationTests(unittest.TestCase):
     def test_truncated_generation_gets_completion_safeguard(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -91,6 +113,28 @@ class WebGenerationTests(unittest.TestCase):
             self.assertIn("Target 700-1,100 words", retry_prompt)
             self.assertIn("Founder agreement and board consent package", artifact_text)
             self.assertTrue(result.output_path.exists())
+
+    def test_web_generation_includes_knowledge_context_in_prompt(self) -> None:
+        client = CapturingClient()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            generate_web_legal_package(
+                client=client,
+                brief="Generate a Delaware founder legal package.",
+                output_path=root / "package.docx",
+                artifact_dir=root / "artifacts",
+                knowledge_context=(
+                    "[1] 8 Del. C. § 141(f) - Board action without meeting\n"
+                    "version_date: 2026-06-06\n"
+                    "excerpt: Board action may be taken by consent."
+                ),
+            )
+
+        prompt = client.messages[1]["content"]
+        self.assertIn("SUPPLEMENTAL LEGAL KNOWLEDGE BASE CONTEXT", prompt)
+        self.assertIn("8 Del. C. § 141(f)", prompt)
+        self.assertIn("version_date: 2026-06-06", prompt)
+        self.assertIn("Do not invent citations", prompt)
 
 
 if __name__ == "__main__":

@@ -18,6 +18,7 @@ from legal_doc_agent.local_http import (
     send_json,
 )
 from legal_doc_agent.web_generation import generate_web_legal_package
+from legal_doc_agent.web_kb import build_web_knowledge_context, web_kb_path
 
 
 MAX_REQUEST_BYTES = 1_000_000
@@ -51,6 +52,11 @@ class LegalGenerationLocalService:
             "ok": True,
             "service": "legal-doc-generation",
             "requires": ["NVIDIA_API_KEY"],
+            "rag": {
+                "enabled": web_kb_path().exists(),
+                "engine": "sqlite-fts5",
+                "path": web_kb_path().name,
+            },
         }
 
     def generate(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -70,11 +76,13 @@ class LegalGenerationLocalService:
             profiles=load_web_agent_profiles_from_env(),
         )
         print(f"generation started: run_id={run_id}", flush=True)
+        knowledge_context = build_web_knowledge_context(brief)
         result = generate_web_legal_package(
             client=client,
             brief=brief,
             output_path=output_path,
             artifact_dir=artifact_dir,
+            knowledge_context=knowledge_context,
         )
         print(f"generation finished: run_id={run_id}", flush=True)
         markdown = _read_artifact_markdown(result.artifact_dir)

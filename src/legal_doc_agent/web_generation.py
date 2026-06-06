@@ -26,15 +26,28 @@ def generate_web_legal_package(
     brief: str,
     output_path: Path,
     artifact_dir: Path,
+    knowledge_context: str | None = None,
 ) -> WebGenerationResult:
     """Generate a compact legal package for browser and Vercel flows."""
 
     artifact_dir.mkdir(parents=True, exist_ok=True)
     observations: list[Observation] = []
+    if knowledge_context:
+        observations.append(
+            Observation(
+                status="success",
+                summary="Loaded deployed SQLite FTS5 legal knowledge context",
+                next_actions=["Use retrieved citations only as supplemental support"],
+                artifacts=[],
+            )
+        )
 
     print("starting web job: compact_package", flush=True)
     try:
-        raw_draft = client.complete(_compact_package_messages(brief), role=DRAFTER_ROLE)
+        raw_draft = client.complete(
+            _compact_package_messages(brief, knowledge_context=knowledge_context),
+            role=DRAFTER_ROLE,
+        )
     except Exception as exc:
         print(f"web compact package retry after provider error: {exc}", flush=True)
         observations.append(
@@ -46,7 +59,7 @@ def generate_web_legal_package(
             )
         )
         raw_draft = client.complete(
-            _short_package_retry_messages(brief),
+            _short_package_retry_messages(brief, knowledge_context=knowledge_context),
             role=DRAFTER_ROLE,
         )
 
@@ -88,7 +101,12 @@ def generate_web_legal_package(
     )
 
 
-def _compact_package_messages(brief: str) -> list[dict[str, str]]:
+def _compact_package_messages(
+    brief: str,
+    *,
+    knowledge_context: str | None = None,
+) -> list[dict[str, str]]:
+    supplemental = _supplemental_knowledge_prompt(knowledge_context)
     return [
         {
             "role": "system",
@@ -112,13 +130,19 @@ def _compact_package_messages(brief: str) -> list[dict[str, str]]:
                 "# Reviewer Quality Gate\n"
                 "Blocking issues, required fixes, formatting checks, and counsel review notes.\n"
                 "Target 1,600-2,400 words. Finish with the exact line: END OF PACKAGE.\n\n"
+                f"{supplemental}"
                 f"REQUEST:\n{brief}"
             ),
         },
     ]
 
 
-def _short_package_retry_messages(brief: str) -> list[dict[str, str]]:
+def _short_package_retry_messages(
+    brief: str,
+    *,
+    knowledge_context: str | None = None,
+) -> list[dict[str, str]]:
+    supplemental = _supplemental_knowledge_prompt(knowledge_context)
     return [
         {
             "role": "system",
@@ -142,10 +166,22 @@ def _short_package_retry_messages(brief: str) -> list[dict[str, str]]:
                 "# Reviewer Quality Gate\n"
                 "Blocking issues, required fixes, formatting checks, and counsel review notes.\n"
                 "Target 700-1,100 words. Finish with the exact line: END OF PACKAGE.\n\n"
+                f"{supplemental}"
                 f"REQUEST:\n{brief}"
             ),
         },
     ]
+
+
+def _supplemental_knowledge_prompt(knowledge_context: str | None) -> str:
+    if not knowledge_context:
+        return ""
+    return (
+        "SUPPLEMENTAL LEGAL KNOWLEDGE BASE CONTEXT:\n"
+        f"{knowledge_context}\n\n"
+        "Use this context only as retrieved authority support. Do not invent citations. "
+        "If a cited issue is not supported by this context, mark it for counsel verification.\n\n"
+    )
 
 
 def _strip_markdown_fence(markdown: str) -> str:

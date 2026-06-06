@@ -19,6 +19,7 @@ if str(SRC_ROOT) not in sys.path:
 from legal_doc_agent.agents import NvidiaAgentRouter, load_web_agent_profiles_from_env  # noqa: E402
 from legal_doc_agent.config import ConfigurationError, NvidiaConfig  # noqa: E402
 from legal_doc_agent.web_generation import generate_web_legal_package  # noqa: E402
+from legal_doc_agent.web_kb import build_web_knowledge_context, web_kb_path  # noqa: E402
 
 
 MAX_REQUEST_BYTES = 1_000_000
@@ -35,6 +36,11 @@ class handler(BaseHTTPRequestHandler):
                 "service": "legal-doc-generation",
                 "runtime": "vercel-python",
                 "requires": ["NVIDIA_API_KEY"],
+                "rag": {
+                    "enabled": web_kb_path().exists(),
+                    "engine": "sqlite-fts5",
+                    "path": web_kb_path().name,
+                },
             }
         )
 
@@ -54,11 +60,13 @@ class handler(BaseHTTPRequestHandler):
                 base_config=NvidiaConfig.from_env(timeout_seconds=120),
                 profiles=load_web_agent_profiles_from_env(),
             )
+            knowledge_context = build_web_knowledge_context(brief)
             result = generate_web_legal_package(
                 client=client,
                 brief=brief,
                 output_path=output_path,
                 artifact_dir=artifact_dir,
+                knowledge_context=knowledge_context,
             )
             self._send_json(
                 {

@@ -75,8 +75,10 @@ class LegalGenerationLocalServiceTests(unittest.TestCase):
                 brief: str,
                 output_path: Path,
                 artifact_dir: Path,
+                knowledge_context: str | None = None,
             ) -> SimpleNamespace:
                 captured["brief"] = brief
+                captured["knowledge_context"] = knowledge_context
                 artifact_dir.mkdir(parents=True)
                 (artifact_dir / "draft.md").write_text("# Draft", encoding="utf-8")
                 output_path.parent.mkdir(parents=True, exist_ok=True)
